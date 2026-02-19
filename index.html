@@ -152,6 +152,10 @@
                     document.getElementById('playerTitle').innerText = ep.title;
                     document.getElementById('playerAuthor').innerText = p.title;
                     document.getElementById('dynamicBg').style.backgroundImage = `url('${cover}')`;
+                    
+                    // --- 核心改动：同步至安卓锁屏控件 ---
+                    PlayerCore.updateMetadata(ep.title, p.title, cover);
+                    
                     PlayerCore.play(ep.audioUrl);
                     PlayerCore.audio.playbackRate = speeds[currentSpeedIndex];
                     window.updatePlayIcons(true);
@@ -211,7 +215,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             renderPodcastList();
             document.getElementById('rssFileInput').onchange = handleFileUpload;
-            // 切换管理模式
             document.getElementById('editBtn').onclick = (e) => { 
                 e.stopPropagation(); 
                 document.body.classList.toggle('edit-mode'); 
