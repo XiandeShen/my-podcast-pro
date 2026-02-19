@@ -7,15 +7,16 @@ export const PlayerCore = {
     play(url) {
         if (!url) return;
         
-        // 1. 切换音源时，彻底重置旧状态
+        // 1. 切换音源时，彻底重置
         if (this.audio.src !== url) {
             this.audio.pause();
             this.audio.src = url;
             this.audio.load();
-            this.resetMediaSession(); // 关键：清除旧进度残留
+            this.resetMediaSession(); 
         }
         
         this.audio.play().then(() => {
+            // 播放瞬间立即同步一次状态
             this.syncMediaSession("playing");
         }).catch(e => console.error("播放失败:", e));
 
@@ -24,17 +25,16 @@ export const PlayerCore = {
             const dur = this.audio.duration;
             const isDurValid = !!(dur && isFinite(dur));
             
-            // 更新网页 UI 渲染
+            // 更新网页 UI
             if (this._onTimeUpdate) {
                 const pct = isDurValid ? (curr / dur) * 100 : 0;
-                // 强制格式化，确保不出现 4114.4 这种原始秒数
                 this._onTimeUpdate(pct, this.format(curr, dur), isDurValid ? this.format(dur, dur) : "--:--");
             }
             
-            // --- 核心修复：心跳同步 ---
-            // 为了防止系统“预测”跑偏（产生那1分钟误差），每 5 秒强制校准一次
+            // --- 核心优化：高频校准 ---
+            // 增加同步频率（每 2 秒），并确保在播放状态下持续校准偏移
             const now = Date.now();
-            if (now - this._lastSyncTime > 5000) {
+            if (now - this._lastSyncTime > 2000) { 
                 this.syncMediaSession();
                 this._lastSyncTime = now;
             }
@@ -42,11 +42,10 @@ export const PlayerCore = {
 
         this.audio.onplay = () => this.syncMediaSession("playing");
         this.audio.onpause = () => this.syncMediaSession("paused");
-        // 当元数据加载完（拿到时长），立即同步一次，防止系统显示 undefined
+        this.audio.onratechange = () => this.syncMediaSession(); // 监听倍速变化并同步
         this.audio.onloadedmetadata = () => this.syncMediaSession();
     },
 
-    // 彻底重置系统的媒体状态
     resetMediaSession() {
         if ('mediaSession' in navigator) {
             navigator.mediaSession.metadata = null;
@@ -57,7 +56,7 @@ export const PlayerCore = {
     },
 
     syncMediaSession(stateOverride) {
-        if (!('mediaSession' in navigator)) return;
+        if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) return;
         
         const state = stateOverride || (this.audio.paused ? "paused" : "playing");
         navigator.mediaSession.playbackState = state;
@@ -65,67 +64,85 @@ export const PlayerCore = {
         const curr = this.audio.currentTime;
         const dur = this.audio.duration;
 
-        // 只有当时长有效时才同步进度条
-        if (dur && isFinite(dur)) {
+        // 关键：必须同时提供 position, duration 和 playbackRate 
+        // 否则系统会默认按 1.0x 速度预测，导致进度条跑快或跑慢
+        if (dur && isFinite(dur) && curr >= 0) {
             try {
                 navigator.mediaSession.setPositionState({
-                    duration: dur,
-                    playbackRate: this.audio.playbackRate || 1,
-                    position: curr // 不再用 Math.floor，提高精度
+                    duration: Math.max(0, dur),
+                    playbackRate: this.audio.playbackRate || 1.0,
+                    position: Math.min(curr, dur) 
                 });
             } catch (e) {
-                console.warn("MediaSession Position 同步失败", e);
+                console.warn("MediaSession 同步失败:", e);
             }
         }
     },
 
-    // 强化版格式化：支持 H:MM:SS，且即便没有 totalS 也会根据当前秒数自动进位
     format(s, totalS) {
         if (isNaN(s) || s === Infinity) return "0:00";
         const h = Math.floor(s / 3600);
         const m = Math.floor((s % 3600) / 60);
         const sec = Math.floor(s % 60);
         
-        // 逻辑：如果总时长超过1小时，或者当前播放已经超过1小时，就显示小时位
         const showHour = (totalS && totalS >= 3600) || h > 0;
-        
-        const mm = m < 10 ? '0' + m : m;
+        const mm = m < 10 ? (showHour ? '0' + m : m) : m;
         const ss = sec < 10 ? '0' + sec : sec;
         
-        if (showHour) {
-            return `${h}:${mm}:${ss}`;
-        }
-        return `${m}:${ss}`;
+        return showHour ? `${h}:${mm}:${ss}` : `${m}:${ss}`;
     },
 
     updateMetadata(title, artist, cover) {
         if ('mediaSession' in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title, artist,
-                artwork: [{ src: cover, sizes: '512x512', type: 'image/jpeg' }]
+                artwork: [
+                    { src: cover, sizes: '96x96',   type: 'image/jpeg' },
+                    { src: cover, sizes: '512x512', type: 'image/jpeg' }
+                ]
             });
-            // 绑定系统按键
-            navigator.mediaSession.setActionHandler('play', () => this.audio.play());
-            navigator.mediaSession.setActionHandler('pause', () => this.audio.pause());
-            navigator.mediaSession.setActionHandler('seekto', (d) => {
-                this.audio.currentTime = d.seekTime;
-                this.syncMediaSession();
-            });
-            navigator.mediaSession.setActionHandler('seekbackward', () => { 
-                this.audio.currentTime = Math.max(0, this.audio.currentTime - 15);
-                this.syncMediaSession();
-            });
-            navigator.mediaSession.setActionHandler('seekforward', () => { 
-                this.audio.currentTime = Math.min(this.audio.duration, this.audio.currentTime + 15);
-                this.syncMediaSession();
-            });
+
+            // 绑定系统控件交互
+            const actions = {
+                play: () => { this.audio.play(); this.syncMediaSession("playing"); },
+                pause: () => { this.audio.pause(); this.syncMediaSession("paused"); },
+                seekto: (details) => { 
+                    this.audio.currentTime = details.seekTime;
+                    this.syncMediaSession();
+                },
+                seekbackward: () => { 
+                    this.audio.currentTime = Math.max(0, this.audio.currentTime - 15);
+                    this.syncMediaSession();
+                },
+                seekforward: () => { 
+                    this.audio.currentTime = Math.min(this.audio.duration, this.audio.currentTime + 15);
+                    this.syncMediaSession();
+                }
+            };
+
+            for (const [action, handler] of Object.entries(actions)) {
+                try { navigator.mediaSession.setActionHandler(action, handler); } catch(e) {}
+            }
         }
     },
+
     onTimeUpdate(cb) { this._onTimeUpdate = cb; },
-    toggle() { return this.audio.paused ? (this.audio.play(), true) : (this.audio.pause(), false); },
+    
+    toggle() { 
+        const isPaused = this.audio.paused;
+        if (isPaused) {
+            this.audio.play();
+        } else {
+            this.audio.pause();
+        }
+        return isPaused; 
+    },
+
     seek(pct) {
         if (this.audio.duration && isFinite(this.audio.duration)) {
-            this.audio.currentTime = (pct / 100) * this.audio.duration;
+            const targetTime = (pct / 100) * this.audio.duration;
+            this.audio.currentTime = targetTime;
+            // 拖动进度条后立即强制同步，防止系统 UI 跳回
             this.syncMediaSession();
         }
     }
