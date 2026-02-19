@@ -3,8 +3,12 @@ export const PlayerCore = {
     audio: new Audio(),
     _onTimeUpdate: null,
 
-    play(url) {
+    play(url, callback) { // 修复：增加 callback 参数
         if (!url) return;
+        
+        // 如果有传入回调，则更新内部监听器
+        if (callback) this._onTimeUpdate = callback;
+
         const currentRate = this.audio.playbackRate;
         this.audio.src = url;
         
@@ -16,16 +20,18 @@ export const PlayerCore = {
         }
 
         this.audio.ontimeupdate = () => {
-            const current = this.format(this.audio.currentTime);
-            const total = this.format(this.audio.duration);
-            const pct = (this.audio.currentTime / this.audio.duration) * 100 || 0;
-            if (this._onTimeUpdate) this._onTimeUpdate(pct, current, total);
+            // 计算进度百分比和时间
+            const current = this.audio.currentTime;
+            const total = this.audio.duration;
+            const pct = (current / total) * 100 || 0;
             
-            // 已删除：同步进度到系统锁屏控件的逻辑
+            // 触发 UI 更新回调
+            if (this._onTimeUpdate) {
+                // 注意：这里传回的是原始秒数，供 UI 层的 updateProgress 处理
+                this._onTimeUpdate(current, total); 
+            }
         };
     },
-
-    // 已删除：updateMetadata 方法及其内部所有系统推送逻辑
 
     onTimeUpdate(cb) { this._onTimeUpdate = cb; },
 
