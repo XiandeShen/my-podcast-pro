@@ -8,7 +8,6 @@ export async function fetchAndParseRSS(url) {
 
         const getImg = (el) => {
             if (!el) return "";
-            // 兼容命名空间查找
             const itunesImg = el.getElementsByTagName("itunes:image")[0] || el.querySelector("image");
             if (itunesImg) {
                 return itunesImg.getAttribute("href") || itunesImg.querySelector("url")?.textContent || "";
