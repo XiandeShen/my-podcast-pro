@@ -3,36 +3,61 @@ export const PlayerCore = {
     audio: new Audio(),
     _onTimeUpdate: null,
 
+    // 初始化监听器：确保倍速和状态实时同步给系统
+    init() {
+        this.audio.addEventListener('ratechange', () => this.syncPosition());
+        this.audio.addEventListener('play', () => this.updateMediaStatus('playing'));
+        this.audio.addEventListener('pause', () => this.updateMediaStatus('paused'));
+        this.audio.addEventListener('ended', () => this.updateMediaStatus('none'));
+    },
+
     play(url) {
         if (!url) return;
-        const currentRate = this.audio.playbackRate;
-        this.audio.src = url;
         
+        // 只有 URL 改变时才重置 src，防止重复加载导致进度跳动
+        if (this.audio.src !== url) {
+            this.audio.src = url;
+            this.audio.load();
+        }
+
         const playPromise = this.audio.play();
         if (playPromise !== undefined) {
             playPromise.then(() => {
-                this.audio.playbackRate = currentRate;
+                this.updateMediaStatus('playing');
+                this.syncPosition();
             }).catch(error => console.error("Playback Error:", error));
         }
 
         this.audio.ontimeupdate = () => {
-            const current = this.format(this.audio.currentTime);
-            const total = this.format(this.audio.duration);
-            const pct = (this.audio.currentTime / this.audio.duration) * 100 || 0;
-            if (this._onTimeUpdate) this._onTimeUpdate(pct, current, total);
-            
-            // 同步进度到系统锁屏控件
-            if ('mediaSession' in navigator && this.audio.duration) {
-                navigator.mediaSession.setPositionState({
-                    duration: this.audio.duration,
-                    playbackPosition: this.audio.currentTime,
-                    playbackRate: this.audio.playbackRate
-                });
+            // 这里的 current 和 total 传秒数给 UI，由 UI 统一格式化
+            if (this._onTimeUpdate) {
+                this._onTimeUpdate(this.audio.currentTime, this.audio.duration);
             }
+            this.syncPosition();
         };
     },
 
-    // 新增：向安卓/iOS系统推送媒体信息
+    // 核心修复：同步进度、总时长和倍速到系统控件
+    syncPosition() {
+        if ('mediaSession' in navigator && this.audio.duration && !isNaN(this.audio.duration)) {
+            try {
+                navigator.mediaSession.setPositionState({
+                    duration: this.audio.duration,
+                    playbackRate: this.audio.playbackRate || 1.0,
+                    position: this.audio.currentTime || 0 // 属性名必须是 position
+                });
+            } catch (e) {
+                console.warn("MediaSession Error:", e);
+            }
+        }
+    },
+
+    updateMediaStatus(state) {
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = state;
+        }
+    },
+
     updateMetadata(title, artist, cover) {
         if ('mediaSession' in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
@@ -48,7 +73,7 @@ export const PlayerCore = {
                 ]
             });
 
-            // 注册锁屏控制按钮回调
+            // 注册系统控制回调
             navigator.mediaSession.setActionHandler('play', () => { 
                 this.audio.play(); 
                 if(window.updatePlayIcons) window.updatePlayIcons(true); 
@@ -57,8 +82,8 @@ export const PlayerCore = {
                 this.audio.pause(); 
                 if(window.updatePlayIcons) window.updatePlayIcons(false); 
             });
-            navigator.mediaSession.setActionHandler('seekbackward', () => { if(window.seekOffset) window.seekOffset(-15); });
-            navigator.mediaSession.setActionHandler('seekforward', () => { if(window.seekOffset) window.seekOffset(15); });
+            navigator.mediaSession.setActionHandler('seekbackward', () => { this.audio.currentTime -= 15; });
+            navigator.mediaSession.setActionHandler('seekforward', () => { this.audio.currentTime += 15; });
             navigator.mediaSession.setActionHandler('seekto', (details) => {
                 if (details.seekTime) this.audio.currentTime = details.seekTime;
             });
@@ -83,3 +108,6 @@ export const PlayerCore = {
         return `${m}:${sec < 10 ? '0' : ''}${sec}`;
     }
 };
+
+// 立即初始化
+PlayerCore.init();
