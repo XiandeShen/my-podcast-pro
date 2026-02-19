@@ -5,18 +5,25 @@ export const UI = {
     openPlayer(episode, podcastTitle, podcastCover) {
         const overlay = document.getElementById('playerOverlay');
         const playerCover = document.getElementById('playerCover');
-        
         const finalCover = episode.image || podcastCover;
 
+        // 1. 设置 UI 静态内容
         document.getElementById('playerTitle').innerText = episode.title;
         document.getElementById('playerAuthor').innerText = podcastTitle;
-        
         if (playerCover) playerCover.src = finalCover;
-        overlay.classList.add('is-active');
 
-        PlayerCore.play(episode.audioUrl, (current, total) => {
+        // 2. 设置进度回调 (注意：PlayerCore 传回的是秒数)
+        PlayerCore.onTimeUpdate((current, total) => {
             this.updateProgress(current, total);
         });
+
+        // 3. 将元数据同步给安卓/iOS系统
+        PlayerCore.updateMetadata(episode.title, podcastTitle, finalCover);
+
+        // 4. 播放音频
+        PlayerCore.play(episode.audioUrl);
+
+        overlay.classList.add('is-active');
     },
 
     updateProgress(current, total) {
@@ -33,7 +40,7 @@ export const UI = {
     },
 
     formatTime(seconds) {
-        if (isNaN(seconds)) return "0:00";
+        if (!seconds || isNaN(seconds)) return "0:00";
         const m = Math.floor(seconds / 60);
         const s = Math.floor(seconds % 60);
         return `${m}:${s < 10 ? '0' : ''}${s}`;
