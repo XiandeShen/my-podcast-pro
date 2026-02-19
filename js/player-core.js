@@ -8,35 +8,37 @@ export const PlayerCore = {
         if (!url) return;
         const currentRate = this.audio.playbackRate;
         
-        // 只有在切换新歌时才重置并加载
         if (this.audio.src !== url) {
             this.audio.src = url;
             this.audio.load();
         }
 
-        // 核心修复：确保在音频元数据加载后再同步一次总时长，防止 undefined
-        this.audio.onloadedmetadata = () => {
-            this.syncMediaSession();
-        };
+        this.audio.onloadedmetadata = () => { this.syncMediaSession(); };
         
         const playPromise = this.audio.play();
         if (playPromise !== undefined) {
             playPromise.then(() => {
                 this.audio.playbackRate = currentRate;
                 this.syncMediaSession();
-            }).catch(error => console.error("Playback Error:", error));
+            }).catch(e => console.error("播放报错:", e));
         }
 
         this.audio.ontimeupdate = () => {
-            const current = this.audio.currentTime;
-            const total = this.audio.duration;
+            const rawCurrent = this.audio.currentTime || 0;
+            const rawDuration = this.audio.duration;
             
-            // 将原始秒数传给 UI 层处理
+            // 核心修复：直接在核心层做好所有防错和格式化
+            const isDurationValid = rawDuration && !isNaN(rawDuration) && rawDuration !== Infinity;
+            const pct = isDurationValid ? (rawCurrent / rawDuration) * 100 : 0;
+            const currentStr = this.format(rawCurrent);
+            const durationStr = isDurationValid ? this.format(rawDuration) : "--:--";
+
+            // 直接传计算好的结果给 UI
             if (this._onTimeUpdate) {
-                this._onTimeUpdate(current, total);
+                this._onTimeUpdate(pct, currentStr, durationStr);
             }
             
-            // 每秒向手机锁屏系统汇报一次进度
+            // 节流同步系统锁屏
             const now = Date.now();
             if (now - this._lastSystemSync > 1000) {
                 this.syncMediaSession();
@@ -51,17 +53,20 @@ export const PlayerCore = {
     syncMediaSession() {
         const d = this.audio.duration;
         const p = this.audio.currentTime;
+        const isValid = d && !isNaN(d) && d !== Infinity;
 
-        // 核心修复：只有当 duration 真实存在且有效时，才同步给系统
-        if ('mediaSession' in navigator && d && !isNaN(d) && d !== Infinity) {
+        if ('mediaSession' in navigator) {
             try {
-                navigator.mediaSession.setPositionState({
-                    duration: d,
+                // 核心修复：如果音频没给出总时长（Infinity），就不传 duration，防止锁屏进度条暴走
+                const state = {
                     playbackRate: this.audio.playbackRate || 1,
-                    position: p
-                });
+                    position: p || 0
+                };
+                if (isValid) state.duration = d; 
+                
+                navigator.mediaSession.setPositionState(state);
             } catch (e) {
-                console.warn("MediaSession 同步失败:", e);
+                console.warn("系统锁屏同步失败:", e);
             }
         }
     },
@@ -71,32 +76,19 @@ export const PlayerCore = {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: title,
                 artist: artist,
-                artwork: [
-                    { src: cover, sizes: '96x96' },
-                    { src: cover, sizes: '128x128' },
-                    { src: cover, sizes: '192x192' },
-                    { src: cover, sizes: '256x256' },
-                    { src: cover, sizes: '384x384' },
-                    { src: cover, sizes: '512x512' }
-                ]
+                artwork: [ { src: cover, sizes: '512x512' } ]
             });
 
-            navigator.mediaSession.setActionHandler('play', () => { 
-                this.audio.play(); 
-                if(window.updatePlayIcons) window.updatePlayIcons(true); 
-            });
-            navigator.mediaSession.setActionHandler('pause', () => { 
-                this.audio.pause(); 
-                if(window.updatePlayIcons) window.updatePlayIcons(false); 
-            });
-            navigator.mediaSession.setActionHandler('seekbackward', () => { if(window.seekOffset) window.seekOffset(-15); else this.audio.currentTime -= 15; });
-            navigator.mediaSession.setActionHandler('seekforward', () => { if(window.seekOffset) window.seekOffset(15); else this.audio.currentTime += 15; });
+            navigator.mediaSession.setActionHandler('play', () => this.audio.play());
+            navigator.mediaSession.setActionHandler('pause', () => this.audio.pause());
             navigator.mediaSession.setActionHandler('seekto', (details) => {
                 if (details.seekTime !== undefined) {
                     this.audio.currentTime = details.seekTime;
                     this.syncMediaSession();
                 }
             });
+            navigator.mediaSession.setActionHandler('seekbackward', () => { this.audio.currentTime -= 15; });
+            navigator.mediaSession.setActionHandler('seekforward', () => { this.audio.currentTime += 15; });
         }
     },
 
@@ -108,7 +100,7 @@ export const PlayerCore = {
     },
 
     seek(pct) {
-        if (this.audio.duration && !isNaN(this.audio.duration)) {
+        if (this.audio.duration && !isNaN(this.audio.duration) && this.audio.duration !== Infinity) {
             this.audio.currentTime = (pct / 100) * this.audio.duration;
             this.syncMediaSession();
         }
