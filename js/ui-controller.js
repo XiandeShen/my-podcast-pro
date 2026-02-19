@@ -5,18 +5,23 @@ export const UI = {
     openPlayer(episode, podcastTitle, podcastCover) {
         const overlay = document.getElementById('playerOverlay');
         const playerCover = document.getElementById('playerCover');
-        
         const finalCover = episode.image || podcastCover;
 
+        // 1. 更新 UI 静态内容
         document.getElementById('playerTitle').innerText = episode.title;
         document.getElementById('playerAuthor').innerText = podcastTitle;
-        
         if (playerCover) playerCover.src = finalCover;
-        overlay.classList.add('is-active');
+        if (overlay) overlay.classList.add('is-active');
 
-        PlayerCore.play(episode.audioUrl, (current, total) => {
+        // 2. 设置系统媒体信息
+        PlayerCore.updateMetadata(episode.title, podcastTitle, finalCover);
+
+        // 3. 注册进度回调并开始播放
+        PlayerCore.onTimeUpdate((current, total) => {
             this.updateProgress(current, total);
         });
+
+        PlayerCore.play(episode.audioUrl);
     },
 
     updateProgress(current, total) {
@@ -26,14 +31,16 @@ export const UI = {
 
         if (total > 0) {
             const percent = (current / total) * 100;
+            // 更新进度条 (假定它是 range 类型的 input)
             if (progressRange) progressRange.value = percent;
+            // 更新时间文字
             if (currentTimeEl) currentTimeEl.innerText = this.formatTime(current);
             if (durationTimeEl) durationTimeEl.innerText = this.formatTime(total);
         }
     },
 
     formatTime(seconds) {
-        if (isNaN(seconds)) return "0:00";
+        if (isNaN(seconds) || seconds === Infinity) return "0:00";
         const m = Math.floor(seconds / 60);
         const s = Math.floor(seconds % 60);
         return `${m}:${s < 10 ? '0' : ''}${s}`;
