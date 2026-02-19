@@ -19,7 +19,7 @@ export const PlayerCore = {
         if (playPromise !== undefined) {
             playPromise.then(() => {
                 this.audio.playbackRate = currentRate;
-                this.syncMediaSession();
+                this.syncMediaSession(); // 播放开始立即同步
             }).catch(e => console.error("播放报错:", e));
         }
 
@@ -27,18 +27,16 @@ export const PlayerCore = {
             const rawCurrent = this.audio.currentTime || 0;
             const rawDuration = this.audio.duration;
             
-            // 核心修复：直接在核心层做好所有防错和格式化
             const isDurationValid = rawDuration && !isNaN(rawDuration) && rawDuration !== Infinity;
             const pct = isDurationValid ? (rawCurrent / rawDuration) * 100 : 0;
             const currentStr = this.format(rawCurrent);
             const durationStr = isDurationValid ? this.format(rawDuration) : "--:--";
 
-            // 直接传计算好的结果给 UI
             if (this._onTimeUpdate) {
                 this._onTimeUpdate(pct, currentStr, durationStr);
             }
             
-            // 节流同步系统锁屏
+            // 正常播放时每秒同步一次
             const now = Date.now();
             if (now - this._lastSystemSync > 1000) {
                 this.syncMediaSession();
@@ -46,28 +44,45 @@ export const PlayerCore = {
             }
         };
 
-        this.audio.onplay = () => { if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing"; };
-        this.audio.onpause = () => { if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused"; };
+        // --- 核心修复：监听暂停和播放，立即强制同步系统状态 ---
+        this.audio.onplay = () => { 
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.playbackState = "playing";
+                this.syncMediaSession(); 
+            }
+        };
+        this.audio.onpause = () => { 
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.playbackState = "paused";
+                this.syncMediaSession(); // 暂停时立即上报 rate: 0
+            }
+        };
     },
 
     syncMediaSession() {
+        if (!('mediaSession' in navigator)) return;
+
         const d = this.audio.duration;
         const p = this.audio.currentTime;
+        const isPaused = this.audio.paused; // 获取当前播放器是否暂停
         const isValid = d && !isNaN(d) && d !== Infinity;
 
-        if ('mediaSession' in navigator) {
-            try {
-                // 核心修复：如果音频没给出总时长（Infinity），就不传 duration，防止锁屏进度条暴走
-                const state = {
-                    playbackRate: this.audio.playbackRate || 1,
-                    position: p || 0
-                };
-                if (isValid) state.duration = d; 
-                
-                navigator.mediaSession.setPositionState(state);
-            } catch (e) {
-                console.warn("系统锁屏同步失败:", e);
+        try {
+            const state = {
+                // 核心修复：如果暂停，速率传0；如果播放，传实际速率（通常是1）
+                // 这样手机系统就会停止锁屏进度条的“自增预测”
+                playbackRate: isPaused ? 0 : (this.audio.playbackRate || 1),
+                // 核心修复：使用 Math.floor 去除小数，防止系统进位错误
+                position: Math.floor(p) || 0
+            };
+            
+            if (isValid) {
+                state.duration = Math.floor(d);
             }
+            
+            navigator.mediaSession.setPositionState(state);
+        } catch (e) {
+            console.warn("MediaSession 同步失败:", e);
         }
     },
 
