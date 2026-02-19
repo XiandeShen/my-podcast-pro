@@ -30,7 +30,6 @@
 }
 .p-overlay.is-active { transform: translateY(0); }
 
-/* 动态自适应背景 */
 .p-dynamic-bg {
     position: absolute; top: -10%; left: -10%; width: 120%; height: 120%;
     background-size: cover; background-position: center;
@@ -39,7 +38,7 @@
     transition: background-image 0.8s ease;
 }
 
-.p-header-nav { padding: 20px; display: flex; justify-content: center; position: relative; z-index: 2; }
+.p-header-nav { padding: 20px; display: flex; justify-content: center; position: relative; z-index: 2; flex-shrink: 0; }
 .p-close-btn { 
     background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border: none; 
     width: 44px; height: 44px; border-radius: 50%; color: #fff;
@@ -48,7 +47,8 @@
 
 .p-main-content { 
     flex: 1; display: flex; flex-direction: column; align-items: center; 
-    justify-content: center; padding: 0 30px 40px; position: relative; z-index: 2;
+    justify-content: space-evenly; padding: 0 30px 40px; position: relative; z-index: 2;
+    overflow: hidden;
 }
 
 @media (min-width: 768px) {
@@ -57,34 +57,41 @@
     .p-controls-area { flex: 1; text-align: left; max-width: 400px; }
 }
 
-.p-cover-wrap { width: 80vw; max-width: 340px; aspect-ratio: 1/1; }
+.p-cover-wrap { width: 70vw; max-width: 320px; aspect-ratio: 1/1; flex-shrink: 1; }
 #playerCover { width: 100%; height: 100%; border-radius: 24px; object-fit: cover; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
 
-.p-controls-area { width: 100%; margin-top: 40px; color: #fff; }
-.p-info { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; }
-#playerTitle { font-size: 22px; font-weight: 800; margin: 0 0 6px; line-height: 1.3; }
-#playerAuthor { font-size: 15px; color: rgba(255,255,255,0.8); font-weight: 600; margin: 0; }
+/* 重点优化：控制区固定大小，防止被文字撑开 */
+.p-controls-area { width: 100%; margin-top: 20px; color: #fff; flex-shrink: 0; }
+.p-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 15px; }
+.p-info-text { flex: 1; min-width: 0; }
+
+/* 标题限制在两行，防止无限向下挤压 */
+#playerTitle { 
+    font-size: 20px; font-weight: 800; margin: 0 0 4px; line-height: 1.3; 
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+#playerAuthor { font-size: 14px; color: rgba(255,255,255,0.8); font-weight: 600; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .p-speed-btn {
     background: rgba(255,255,255,0.2); color: #fff; border: none; padding: 6px 12px;
-    border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer; backdrop-filter: blur(10px);
+    border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer; backdrop-filter: blur(10px); flex-shrink: 0;
 }
 
-.p-progress-wrap { margin-bottom: 35px; }
+.p-progress-wrap { margin-bottom: 25px; }
 .p-slider { 
     width: 100%; height: 5px; border-radius: 10px; accent-color: #fff; 
     appearance: none; background: rgba(255,255,255,0.2); cursor: pointer;
 }
 .p-time-info { display: flex; justify-content: space-between; font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 10px; }
 
-.p-controls { display: flex; align-items: center; justify-content: center; gap: 40px; }
+.p-controls { display: flex; align-items: center; justify-content: center; gap: 30px; }
 .p-btn-play-large { 
-    width: 80px; height: 80px; border-radius: 50%; background: #fff; color: #000; border: none; 
+    width: 72px; height: 72px; border-radius: 50%; background: #fff; color: #000; border: none; 
     display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s;
 }
 .p-btn-play-large:active { transform: scale(0.92); }
 .p-btn-sec { 
     background: rgba(255,255,255,0.15); border: none; color: #fff; 
-    width: 52px; height: 52px; border-radius: 50%; 
+    width: 48px; height: 48px; border-radius: 50%; 
     display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
