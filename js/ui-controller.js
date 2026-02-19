@@ -5,18 +5,20 @@ export const UI = {
     openPlayer(episode, podcastTitle, podcastCover) {
         const overlay = document.getElementById('playerOverlay');
         const playerCover = document.getElementById('playerCover');
-        
         const finalCover = episode.image || podcastCover;
 
-        // 更新网页 UI
-        document.getElementById('playerTitle').innerText = episode.title;
-        document.getElementById('playerAuthor').innerText = podcastTitle;
-        
+        // 1. 更新网页 UI 文本和封面
+        if (document.getElementById('playerTitle')) {
+            document.getElementById('playerTitle').innerText = episode.title;
+        }
+        if (document.getElementById('playerAuthor')) {
+            document.getElementById('playerAuthor').innerText = podcastTitle;
+        }
         if (playerCover) playerCover.src = finalCover;
+        
         overlay.classList.add('is-active');
 
-        // 已删除：调用 PlayerCore.updateMetadata 的逻辑
-
+        // 2. 启动播放并传入进度回调
         PlayerCore.play(episode.audioUrl, (current, total) => {
             this.updateProgress(current, total);
         });
