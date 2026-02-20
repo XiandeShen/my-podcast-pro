@@ -13,7 +13,7 @@
 .mini-progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.1s linear; }
 .mini-player-content { flex: 1; display: flex; align-items: center; padding: 0 16px; gap: 12px; }
 .mini-info { flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; }
-#miniCover { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+#miniCover { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
 .mini-text { min-width: 0; display: flex; flex-direction: column; }
 #miniTitle { font-size: 14px; font-weight: 700; color: #1d1d1f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #miniAuthor { font-size: 11px; color: var(--accent); font-weight: 600; }
@@ -94,4 +94,24 @@
     background: rgba(255,255,255,0.15); border: none; color: #fff; 
     width: 44px; height: 44px; border-radius: 50%; 
     display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+
+/* 处于空状态时，控制按钮整体变灰且不可点击 */
+.mini-player.is-empty .mini-controls {
+    filter: grayscale(1); /* 整体变灰 */
+    opacity: 0.5;         /* 增加透明度，看起来更像禁用状态 */
+    pointer-events: none; /* 核心：禁止一切点击事件 */
+}
+
+/* 抖动动画提示 */
+@keyframes miniShake {
+    0% { transform: translateX(-50%); }
+    25% { transform: translateX(-52%); }
+    50% { transform: translateX(-48%); }
+    75% { transform: translateX(-51%); }
+    100% { transform: translateX(-50%); }
+}
+
+.mini-shake {
+    animation: miniShake 0.3s ease-in-out;
 }
