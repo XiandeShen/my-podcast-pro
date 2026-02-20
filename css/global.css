@@ -1,3 +1,5 @@
+/* global.css */
+
 :root {
     --accent: #af52de;
     --text-main: #1d1d1f;
@@ -43,6 +45,7 @@ body {
     background: transparent !important;
 }
 
+/* 修改点 1：调整盒模型，确保高度包含 padding-top */
 .header { 
     position: fixed; 
     top: 0; 
@@ -57,11 +60,12 @@ body {
     border-bottom: 0.5px solid rgba(0,0,0,0.08);
     display: flex; 
     align-items: center; 
-    box-sizing: content-box;
+    box-sizing: border-box; /* 改为 border-box，防止 env 撑开总高度 */
 }
 
+/* 修改点 2：去掉固定高度，让其在父容器内弹性填充并居中 */
 .header-content {
-    height: 80px; 
+    flex: 1; /* 自动填充剩余空间 */
     display: flex; 
     align-items: center; 
     justify-content: space-between;
