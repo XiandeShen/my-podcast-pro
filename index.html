@@ -27,10 +27,16 @@
         #brandTitle { font-size: 24px; font-weight: 800; margin: 0; }
         .header-actions { display: flex; gap: 12px; }
         
-        /* 修正 content 的 padding，避免内容被底部播放器遮挡 */
+        /* 修正 content 布局：确保内容始终从顶部开始，不居中 */
         .content {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            align-content: start !important; /* 强制内容从顶部开始排列 */
+            gap: 24px;
             padding-top: 10px !important;
             padding-bottom: 120px !important;
+            height: 100%;
+            box-sizing: border-box;
         }
     </style>
 </head>
