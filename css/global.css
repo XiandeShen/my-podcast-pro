@@ -107,7 +107,7 @@ body.edit-mode #editBtn {
 
 .episode-modal {
     background: #fff; width: 92%; max-width: 550px; height: 70vh;
-    border-radius: 28px; display: flex; flex-direction: column;
+    border-radius: 0px; display: flex; flex-direction: column;
     box-shadow: 0 30px 60px rgba(0,0,0,0.2); overflow: hidden;
     animation: modalSlide 0.4s cubic-bezier(0.2, 1, 0.2, 1);
 }
