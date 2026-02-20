@@ -69,14 +69,14 @@ body.edit-mode #editBtn {
     color: var(--danger);
     border-color: var(--danger);
 }
-
+/* gap调整响应布局-移动端 */
 .content { 
     flex: 1; 
     overflow-y: auto; 
     padding: 20px 24px calc(112px + env(safe-area-inset-bottom)); 
     display: grid; 
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); 
-    gap: 16px;
+    gap: 10px;
     align-content: start;
     -webkit-overflow-scrolling: touch;
 }
