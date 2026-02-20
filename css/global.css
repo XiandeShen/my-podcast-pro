@@ -1,4 +1,4 @@
-/* global.css */
+/* global.css - 完整修复版本 */
 
 :root {
     --accent: #af52de;
@@ -13,9 +13,11 @@
 * {
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
+    /* 关键修复：强制所有元素使用标准盒模型，防止高度叠加错误 */
+    box-sizing: border-box; 
 }
 
-/* 核心优化：全量隐藏丑陋的系统滚动条，提升 App 感 */
+/* 核心优化：隐藏滚动条 */
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; -ms-overflow-style: none; }
 
@@ -24,6 +26,7 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro", sans-serif;
     background-color: var(--bg-gray);
     color: var(--text-main);
+    /* 关键修复：使用 svh 确保在移动端浏览器（如 Via）中能准确识别视口高度 */
     height: 100svh; 
     width: 100vw;
     overflow: hidden;
@@ -45,13 +48,14 @@ body {
     background: transparent !important;
 }
 
-/* 修改点 1：调整盒模型，确保高度包含 padding-top */
+/* 顶部导航栏：修复 Via 浏览器多出一截的问题 */
 .header { 
     position: fixed; 
     top: 0; 
     left: 0; 
     width: 100%; 
     height: 80px; 
+    /* 自动适配刘海屏/状态栏高度 */
     padding-top: env(safe-area-inset-top); 
     background: var(--nav-bg) !important; 
     backdrop-filter: blur(25px) saturate(180%) !important;
@@ -60,18 +64,17 @@ body {
     border-bottom: 0.5px solid rgba(0,0,0,0.08);
     display: flex; 
     align-items: center; 
-    box-sizing: border-box; /* 改为 border-box，防止 env 撑开总高度 */
+    /* 锁定高度，不让 padding-top 把 Header 撑高 */
+    box-sizing: border-box; 
 }
 
-/* 修改点 2：去掉固定高度，让其在父容器内弹性填充并居中 */
 .header-content {
-    flex: 1; /* 自动填充剩余空间 */
+    flex: 1; 
     display: flex; 
     align-items: center; 
     justify-content: space-between;
     width: 100%; 
     padding: 0 24px;
-    box-sizing: border-box;
 }
 
 .header-left { display: flex; align-items: center; flex: 1; overflow: hidden; }
@@ -97,13 +100,16 @@ body.edit-mode #editBtn {
     border-color: var(--danger);
 }
 
+/* 内容区：确保不会被 Header 遮挡，且底部留够播放器的空间 */
 .content { 
     flex: 1; 
     overflow-y: auto; 
+    /* 适配顶部状态栏动态间距 */
     padding-top: calc(80px + env(safe-area-inset-top) + 20px) !important;
     padding-left: 24px;
     padding-right: 24px;
-    padding-bottom: calc(120px + env(safe-area-inset-bottom));
+    /* 核心修改：底部预留 120px 确保播放器（15px+64px）不会消失且不遮挡内容 */
+    padding-bottom: calc(120px + env(safe-area-inset-bottom)) !important;
     display: grid; 
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); 
     gap: 24px;
@@ -115,7 +121,7 @@ body.edit-mode #editBtn {
         padding-top: calc(80px + 40px) !important;
         padding-left: 48px;
         padding-right: 48px;
-        padding-bottom: 160px;
+        padding-bottom: 160px !important;
         grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
         gap: 32px;
     }
@@ -169,22 +175,22 @@ body.edit-mode #editBtn {
 .ep-list-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ep-list-meta { font-size: 10px; color: var(--accent); margin-top: 2px; font-weight: 700; }
 
-/* 核心修改：进度条彻底隐身 + 激光发光 */
+/* 底部播放器进度条 */
 .mini-progress-bar { 
     width: 100%; 
     height: 2px; 
-    background: transparent !important; /* 强制背景透明，不留任何痕迹 */
+    background: transparent !important; 
     position: absolute; 
     bottom: 0; 
     left: 0; 
-    box-shadow: none !important; /* 移除可能产生的阴影阴影 */
+    box-shadow: none !important; 
 }
 .mini-progress-fill { 
     height: 100%; 
     background: var(--accent); 
     width: 0%; 
     transition: width 0.1s linear; 
-    box-shadow: 0 0 12px var(--accent); /* 激光发光效果 */
+    box-shadow: 0 0 12px var(--accent); 
 }
 
 .delete-badge {
