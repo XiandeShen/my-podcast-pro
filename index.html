@@ -34,7 +34,7 @@
             <circle cx="100" cy="100" r="80" stroke="white" stroke-width="4" fill="none" opacity="0.2"/>
         </svg>
     </div>
-    <h1 id="brandTitle">PODCAST PRO</h1>
+    <h1 id="brandTitle">PODCAST</h1>
 </div>
                     </div>
                     <div class="header-actions">
@@ -51,24 +51,24 @@
 
             <main class="content" id="mainGrid"></main>
 
-            <footer class="mini-player" id="miniPlayer" style="display: none;" onclick="window.expandPlayer()">
-                <div class="mini-player-content">
-                    <div class="mini-info">
-                        <img id="miniCover" src="">
-                        <div class="mini-text">
-                            <div id="miniTitle">未播放</div>
-                            <div id="miniAuthor">作者</div>
-                        </div>
-                    </div>
-                    <div class="mini-controls">
-                        <button class="mini-play-btn" id="miniPlayBtn" onclick="event.stopPropagation(); window.handleToggle()">
-                            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                        </button>
-                        <button class="mini-speed-btn-text" id="miniSpeedBtn" onclick="event.stopPropagation(); window.toggleSpeed()">1.0x</button>
-                    </div>
-                </div>
-                <div class="mini-progress-bar"><div class="mini-progress-fill" id="miniProgressFill"></div></div>
-            </footer>
+            <footer class="mini-player is-empty" id="miniPlayer" onclick="window.expandPlayer()">
+    <div class="mini-player-content">
+        <div class="mini-info">
+            <img id="miniCover" src="data:image/svg+xml,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><rect width='200' height='200' rx='45' fill='%23af52de'/><circle cx='100' cy='100' r='40' fill='white' opacity='0.8'/></svg>">
+            <div class="mini-text">
+                <div id="miniTitle">请选择节目</div>
+                <div id="miniAuthor">PODCAST</div>
+            </div>
+        </div>
+        <div class="mini-controls">
+            <button class="mini-play-btn" id="miniPlayBtn" onclick="event.stopPropagation(); window.handleToggle()">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            <button class="mini-speed-btn-text" id="miniSpeedBtn" onclick="event.stopPropagation(); window.toggleSpeed()">1.0x</button>
+        </div>
+    </div>
+    <div class="mini-progress-bar"><div class="mini-progress-fill" id="miniProgressFill"></div></div>
+</footer>
         </section>
     </div>
 
@@ -121,6 +121,10 @@
         window.closeModal = () => document.getElementById('episodeModalOverlay').style.display = 'none';
 
         window.handleToggle = () => {
+        // 如果没有音频来源，点击播放按钮可以触发打开列表提示，或者直接 return
+    if (!PlayerCore.audio.src || PlayerCore.audio.src === window.location.href) {
+        return;
+    }
             const isPlaying = PlayerCore.toggle();
             window.updatePlayIcons(isPlaying);
         };
@@ -160,7 +164,9 @@
                 item.className = 'episode-list-item';
                 item.onclick = () => {
                     const cover = ep.image || p.image;
-                    document.getElementById('miniPlayer').style.display = "flex";
+                    // 1. 移除空状态类名，恢复颜色和点击功能
+		const mini = document.getElementById('miniPlayer');
+		mini.classList.remove('is-empty');
                     document.getElementById('miniCover').src = cover;
                     document.getElementById('miniTitle').innerText = ep.title;
                     document.getElementById('miniAuthor').innerText = p.title;
@@ -176,10 +182,26 @@
                     PlayerCore.audio.playbackRate = speeds[currentSpeedIndex];
                     window.updatePlayIcons(true);
                 };
+                
+                
                 item.innerHTML = `<img class="ep-list-cover" src="${ep.image || p.image}"><div class="ep-list-info"><div class="ep-list-title">${ep.title}</div><div class="ep-list-meta">播放单集</div></div>`;
                 listContainer.appendChild(item);
             });
+            
+            
         };
+        
+        window.expandPlayer = () => {
+    const mini = document.getElementById('miniPlayer');
+    if (mini.classList.contains('is-empty')) {
+        // 如果是空的，触发抖动效果反馈
+        mini.classList.add('mini-shake');
+        setTimeout(() => mini.classList.remove('mini-shake'), 300);
+    } else {
+        // 只有非空时才允许展开全屏
+        document.getElementById('playerOverlay').classList.add('is-active');
+    }
+};
 
         async function handleFileUpload(e) {
             const files = Array.from(e.target.files);
