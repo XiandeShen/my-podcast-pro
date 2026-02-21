@@ -11,9 +11,10 @@
 * {
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
+    box-sizing: border-box;
 }
 
-/* 核心优化：全量隐藏丑陋的系统滚动条，提升 App 感 */
+/* 核心优化：全量隐藏丑陋的系统滚动条 */
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; -ms-overflow-style: none; }
 
@@ -40,57 +41,6 @@ body {
     flex-direction: column; 
     overflow: hidden; 
     position: relative; 
-    background: transparent !important;
-}
-
-.header { 
-    position: fixed; 
-    top: 0; 
-    left: 0; 
-    width: 100%; 
-    height: 80px; 
-    padding-top: env(safe-area-inset-top); 
-    background: var(--nav-bg) !important; 
-    backdrop-filter: blur(25px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
-    z-index: 1000;
-    border-bottom: 0.5px solid rgba(0,0,0,0.08);
-    display: flex; 
-    align-items: center; 
-    box-sizing: content-box;
-}
-
-.header-content {
-    height: 80px; 
-    display: flex; 
-    align-items: center; 
-    justify-content: space-between;
-    width: 100%; 
-    padding: 0 24px;
-    box-sizing: border-box;
-}
-
-.header-left { display: flex; align-items: center; flex: 1; overflow: hidden; }
-.brand-wrapper { display: flex; align-items: center; gap: 12px; cursor: pointer; }
-.brand-icon-pro { width: 36px; height: 36px; border-radius: 9px; background: linear-gradient(135deg, #af52de, #5e5ce6); flex-shrink: 0; }
-#brandTitle { font-size: 20px; font-weight: 800; letter-spacing: 0.5px; margin: 0; }
-
-.header-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-.action-btn {
-    width: 40px; height: 40px; 
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 50%; 
-    color: var(--text-main); 
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(0,0,0,0.05);
-    cursor: pointer; 
-    transition: all 0.3s ease;
-}
-
-body.edit-mode #editBtn {
-    color: var(--danger);
-    border-color: var(--danger);
 }
 
 .content { 
@@ -103,7 +53,6 @@ body.edit-mode #editBtn {
     display: grid; 
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); 
     gap: 24px;
-    background: transparent !important;
 }
 
 @media (min-width: 768px) {
@@ -111,7 +60,6 @@ body.edit-mode #editBtn {
         padding-top: calc(80px + 40px) !important;
         padding-left: 48px;
         padding-right: 48px;
-        padding-bottom: 160px;
         grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
         gap: 32px;
     }
@@ -128,58 +76,71 @@ body.edit-mode #editBtn {
 .card-info h3 { font-size: 14px; margin: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-info p { font-size: 11px; color: var(--text-sub); margin-top: 4px; }
 
+/* 二级菜单容器 */
 .modal-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.2); 
+    background: rgba(0,0,0,0.4); 
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
-    z-index: 1500; display: none; align-items: center; justify-content: center;
+    z-index: 1500; display: none; align-items: flex-end; justify-content: center;
 }
 
 .episode-modal {
-    background: rgba(255, 255, 255, 0.8); 
-    backdrop-filter: blur(25px) saturate(180%);
-    -webkit-backdrop-filter: blur(25px) saturate(180%);
-    width: 92%; max-width: 550px; height: 70vh;
-    border-radius: 10px; 
+    background: #fff; 
+    width: 100%; max-width: 600px; 
+    height: calc(100svh - 40px - env(safe-area-inset-top)); 
+    border-radius: 24px 24px 0 0; 
     display: flex; flex-direction: column;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.15); 
-    border: 0.5px solid rgba(255,255,255,0.4); 
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.2); 
     overflow: hidden;
-    animation: modalSlide 0.4s cubic-bezier(0.2, 1, 0.2, 1);
+    animation: modalSlideUp 0.4s cubic-bezier(0.2, 1, 0.2, 1);
+    position: relative;
 }
 
-@keyframes modalSlide { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes modalSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-.modal-header { padding: 20px 24px; border-bottom: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
-.modal-header h3 { font-size: 17px; margin: 0; font-weight: 800; }
-.modal-close-x { background: rgba(0,0,0,0.05); border: none; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 20px; }
+.modal-close-x { 
+    position: absolute; top: 16px; right: 16px; 
+    background: rgba(0,0,0,0.05); color: var(--text-main); border: none; 
+    width: 32px; height: 32px; border-radius: 50%; 
+    cursor: pointer; font-size: 20px; z-index: 10;
+    display: flex; align-items: center; justify-content: center;
+}
 
-.modal-content { flex: 1; overflow-y: auto; padding: 10px 16px; background: transparent !important; }
+.modal-content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
-.episode-list-item { display: flex; align-items: center; padding: 12px; border-radius: 14px; cursor: pointer; }
-.ep-list-cover { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; margin-right: 12px; }
+.modal-hero { padding: 48px 24px 20px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.modal-big-cover { width: 160px; height: 160px; border-radius: 12px; object-fit: cover; box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 20px; }
+.modal-info-title { font-size: 22px; font-weight: 800; margin: 0 0 6px 0; color: var(--text-main); padding: 0 10px; }
+.modal-info-author { font-size: 14px; font-weight: 600; color: var(--accent); margin-bottom: 16px; }
+
+/* 简介区域样式 */
+.modal-info-desc-container { width: 100%; padding: 0 20px; position: relative; }
+.modal-info-desc { 
+    font-size: 13px; color: var(--text-sub); line-height: 1.6; margin: 0; 
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; 
+    overflow: hidden; text-align: left;
+    transition: max-height 0.3s ease;
+}
+.modal-info-desc.is-expanded { -webkit-line-clamp: unset; }
+.desc-toggle-btn { 
+    background: none; border: none; color: var(--accent); 
+    font-size: 13px; font-weight: 700; padding: 8px 0; 
+    cursor: pointer; display: none; margin: 0 auto; /* 默认隐藏 */
+}
+
+.episode-list-container { padding: 10px 16px 60px; }
+.ep-list-header { font-size: 16px; font-weight: 800; padding: 15px 12px; border-bottom: 0.5px solid rgba(0,0,0,0.05); margin-bottom: 8px; }
+
+.episode-list-item { display: flex; align-items: center; padding: 14px 12px; border-radius: 14px; cursor: pointer; border-bottom: 0.5px solid rgba(0,0,0,0.03); }
+.episode-list-item:active { background: rgba(0,0,0,0.05); }
+.ep-list-cover { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; margin-right: 14px; }
 .ep-list-info { flex: 1; overflow: hidden; }
-.ep-list-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ep-list-meta { font-size: 10px; color: var(--accent); margin-top: 2px; font-weight: 700; }
+.ep-list-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ep-list-meta { font-size: 11px; color: var(--text-sub); }
 
-/* 核心修改：进度条彻底隐身 + 激光发光 */
-.mini-progress-bar { 
-    width: 100%; 
-    height: 2px; 
-    background: transparent !important; /* 强制背景透明，不留任何痕迹 */
-    position: absolute; 
-    bottom: 0; 
-    left: 0; 
-    box-shadow: none !important; /* 移除可能产生的阴影阴影 */
-}
-.mini-progress-fill { 
-    height: 100%; 
-    background: var(--accent); 
-    width: 0%; 
-    transition: width 0.1s linear; 
-    box-shadow: 0 0 12px var(--accent); /* 激光发光效果 */
-}
+.mini-progress-bar { width: 100%; height: 2px; background: transparent; position: absolute; bottom: 0; left: 0; }
+.mini-progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.1s linear; box-shadow: 0 0 8px var(--accent); }
 
 .delete-badge {
     position: absolute; top: -8px; right: -8px; width: 28px; height: 28px;
