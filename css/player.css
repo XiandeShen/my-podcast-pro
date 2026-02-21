@@ -1,33 +1,45 @@
 /* 迷你悬浮条 */
 .mini-player {
     position: fixed; 
+    /* 核心修改：让底部距离稍微小一点（25px降到15px），组件高度降低（72px降到64px） */
     bottom: 15px; 
     left: 50%; 
     transform: translateX(-50%);
+    
+    /* 核心修改：宽度稍微收窄（94%降到92%），看起来更精致 */
     width: 92%; 
     max-width: 600px; 
     height: 64px; 
+    
     background: rgba(255, 255, 255, 0.85); 
     backdrop-filter: blur(25px) saturate(180%);
     -webkit-backdrop-filter: blur(25px) saturate(180%);
+    
     border-radius: 12px; 
     border: none; 
     box-shadow: 
         0 0 0 0.5px rgba(0, 0, 0, 0.05),
         0 10px 30px rgba(0, 0, 0, 0.1),
         inset 0 0 0 0.5px rgba(255, 255, 255, 0.5);
+
     z-index: 1000;
     display: flex; flex-direction: column; overflow: hidden; cursor: pointer;
+    /* 确保 transition 包含 transform 以维持点击缩放的丝滑 */
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-/* 移除点击动效 */
-.mini-player:active { transform: translateX(-50%); }
+/* 修复点击动效：必须带上 translateX(-50%)，否则组件会左偏 */
+.mini-player:active { transform: translateX(-50%) scale(0.97); }
 
 .mini-progress-bar { width: 100%; height: 3px; background: rgba(0,0,0,0.03); position: absolute; bottom: 0; left: 0; }
-.mini-progress-fill { height: 100%; background: var(--accent); width: 0%; }
+.mini-progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.1s linear; }
 
+/* 核心修改：保持封面贴边 */
 .mini-player-content { flex: 1; display: flex; align-items: center; padding: 0 16px 0 0; gap: 12px; }
+
 .mini-info { flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; }
+
+/* 核心修改：封面高度同步改为 64px */
 #miniCover { 
     width: 64px; height: 64px; 
     border-radius: 0; 
@@ -43,11 +55,11 @@
 .mini-play-btn { background: none; border: none; cursor: pointer; color: #1d1d1f; padding: 0; display: flex; }
 .mini-speed-btn-text { background: none; border: none; color: #86868b; font-size: 13px; font-weight: 700; cursor: pointer; width: 32px; }
 
-/* 全屏播放页 Overlay - 移除 transition */
+/* 全屏播放页 Overlay */
 .p-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: #000; z-index: 2000; display: flex; flex-direction: column;
-    transform: translateY(100%);
+    transform: translateY(100%); transition: transform 0.5s cubic-bezier(0.2, 1, 0.2, 1);
     overflow: hidden;
 }
 .p-overlay.is-active { transform: translateY(0); }
@@ -57,6 +69,7 @@
     background-size: cover; background-position: center;
     filter: blur(50px) brightness(0.8);
     opacity: 0.7; z-index: -1;
+    transition: background-image 0.8s ease;
 }
 
 .p-header-nav { padding: 15px; display: flex; justify-content: center; position: relative; z-index: 2; flex-shrink: 0; }
@@ -81,10 +94,12 @@
 .p-cover-wrap { width: 65vw; max-width: 300px; aspect-ratio: 1/1; flex-shrink: 1; margin-bottom: 20px; }
 #playerCover { width: 100%; height: 100%; border-radius: 10px; object-fit: cover; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
 
+/* 控制区固定，防止溢出 */
 .p-controls-area { width: 100%; color: #fff; flex-shrink: 0; }
 .p-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 12px; }
 .p-info-text { flex: 1; min-width: 0; }
 
+/* 标题缩小并限制行数 */
 #playerTitle { 
     font-size: 18px; font-weight: 700; margin: 0 0 4px; line-height: 1.2; 
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -106,17 +121,56 @@
 .p-controls { display: flex; align-items: center; justify-content: center; gap: 25px; }
 .p-btn-play-large { 
     width: 68px; height: 68px; border-radius: 50%; background: #fff; color: #000; border: none; 
-    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s;
 }
-.p-btn-play-large:active { transform: scale(1); }
+.p-btn-play-large:active { transform: scale(0.92); }
 .p-btn-sec { 
     background: rgba(255,255,255,0.15); border: none; color: #fff; 
     width: 44px; height: 44px; border-radius: 50%; 
     display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
 
+/* 处于空状态时，控制按钮整体变灰且不可点击 */
 .mini-player.is-empty .mini-controls {
     filter: grayscale(1);
     opacity: 0.5;
     pointer-events: none;
+}
+
+/* 抖动动画提示 */
+@keyframes miniShake {
+    0% { transform: translateX(-50%); }
+    25% { transform: translateX(-52%); }
+    50% { transform: translateX(-48%); }
+    75% { transform: translateX(-51%); }
+    100% { transform: translateX(-50%); }
+}
+
+.mini-shake {
+    animation: miniShake 0.3s ease-in-out;
+}
+
+/* 移动端屏蔽播放器相关动画 */
+@media (pointer: coarse) {
+    .mini-player,
+    .mini-player:active,
+    .p-overlay,
+    .p-dynamic-bg,
+    .p-btn-play-large {
+        transition: none !important;
+        animation: none !important;
+    }
+    
+    /* 屏蔽全屏播放器打开时的滑入效果，改为瞬间出现 */
+    .p-overlay {
+        transform: translateY(100%) !important;
+    }
+    .p-overlay.is-active {
+        transform: translateY(0) !important;
+    }
+
+    /* 屏蔽 mini-player 的抖动（空状态提示） */
+    .mini-shake {
+        animation: none !important;
+    }
 }
