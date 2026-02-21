@@ -8,62 +8,16 @@
     <link rel="stylesheet" href="css/global.css">
     <link rel="stylesheet" href="css/player.css">
     <style>
-        .inline-header {
-            grid-column: 1 / -1;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0 10px 0;
-            height: 30px;
-            background: transparent;
-        }
-        .header-left .brand-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            cursor: pointer;
-            transition: transform 0.2s ease;
-        }
+        .inline-header { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; padding: 10px 0 10px 0; height: 30px; background: transparent; }
+        .header-left .brand-wrapper { display: flex; align-items: center; gap: 12px; cursor: pointer; transition: transform 0.2s ease; }
         .header-left .brand-wrapper:active { transform: scale(0.96); }
         .brand-icon-pro { width: 32px; height: 32px; }
         #brandTitle { font-size: 24px; font-weight: 800; margin: 0; }
-        
         .header-actions { display: flex; gap: 8px; position: relative; }
-        
-        .dropdown-menu {
-            position: absolute;
-            top: 45px;
-            right: 0;
-            background: var(--menu-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: 14px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-            width: 160px;
-            display: none;
-            flex-direction: column;
-            padding: 6px;
-            z-index: 2000;
-            border: 0.5px solid var(--border-light);
-            animation: menuFade 0.2s ease-out;
-        }
-        @keyframes menuFade {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        .dropdown-menu { position: absolute; top: 45px; right: 0; background: var(--menu-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); width: 160px; display: none; flex-direction: column; padding: 6px; z-index: 2000; border: 0.5px solid var(--border-light); animation: menuFade 0.2s ease-out; }
+        @keyframes menuFade { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         .dropdown-menu.show { display: flex; }
-        .menu-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px 14px;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-main);
-            border-radius: 10px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
+        .menu-item { display: flex; align-items: center; gap: 10px; padding: 12px 14px; font-size: 14px; font-weight: 500; color: var(--text-main); border-radius: 10px; cursor: pointer; transition: background 0.2s; }
         .menu-item:active { background: rgba(120,120,120,0.1); }
         .menu-item svg { opacity: 0.7; }
         .menu-divider { height: 0.5px; background: var(--border-light); margin: 4px 8px; }
@@ -80,20 +34,9 @@
                         <div class="brand-wrapper" onclick="location.reload()">
                             <div class="brand-icon-pro">
                                 <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                                    <defs>
-                                        <linearGradient id="podGradientHeader" x1="0%" y1="0%" x2="100%" y2="100%">
-                                            <stop offset="0%" style="stop-color:#AF52FF;stop-opacity:1" />
-                                            <stop offset="100%" style="stop-color:#5C5CFF;stop-opacity:1" />
-                                        </linearGradient>
-                                    </defs>
+                                    <defs><linearGradient id="podGradientHeader" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#AF52FF;stop-opacity:1" /><stop offset="100%" style="stop-color:#5C5CFF;stop-opacity:1" /></linearGradient></defs>
                                     <rect width="200" height="200" rx="45" fill="url(#podGradientHeader)"/>
-                                    <g fill="white">
-                                        <rect x="55" y="85" width="12" height="30" rx="6" opacity="0.6"/>
-                                        <rect x="75" y="70" width="12" height="60" rx="6" opacity="0.8"/>
-                                        <rect x="95" y="55" width="12" height="90" rx="6"/>
-                                        <rect x="115" y="70" width="12" height="60" rx="6" opacity="0.8"/>
-                                        <rect x="135" y="85" width="12" height="30" rx="6" opacity="0.6"/>
-                                    </g>
+                                    <g fill="white"><rect x="55" y="85" width="12" height="30" rx="6" opacity="0.6"/><rect x="75" y="70" width="12" height="60" rx="6" opacity="0.8"/><rect x="95" y="55" width="12" height="90" rx="6"/><rect x="115" y="70" width="12" height="60" rx="6" opacity="0.8"/><rect x="135" y="85" width="12" height="30" rx="6" opacity="0.6"/></g>
                                 </svg>
                             </div>
                             <h1 id="brandTitle">PODCAST</h1>
@@ -103,29 +46,17 @@
                         <button class="action-btn" id="editBtn" title="管理资料库">
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                         </button>
-                        
                         <div style="position: relative;">
                             <button class="action-btn" id="menuToggleBtn">
                                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
                             </button>
-                            
                             <div class="dropdown-menu" id="moreMenu">
-                                <div class="menu-item" id="importAction">
-                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                                    添加节目
-                                </div>
-                                <div class="menu-item" id="exportAction">
-                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                    备份资料库
-                                </div>
+                                <div class="menu-item" id="importAction"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>添加节目</div>
+                                <div class="menu-item" id="exportAction"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>备份资料库</div>
                                 <div class="menu-divider"></div>
-                                <div class="menu-item" id="themeToggleAction">
-                                    <svg id="themeIcon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                                    <span id="themeText">深色模式</span>
-                                </div>
+                                <div class="menu-item" id="themeToggleAction"><svg id="themeIcon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><span id="themeText">深色模式</span></div>
                             </div>
                         </div>
-
                         <input type="file" id="rssFileInput" accept=".rss,.xml,.json" multiple style="display:none">
                     </div>
                 </div>
@@ -134,16 +65,11 @@
             <footer class="mini-player is-empty" id="miniPlayer" onclick="window.expandPlayer()">
                 <div class="mini-player-content">
                     <div class="mini-info">
-                        <img id="miniCover" src="data:image/svg+xml,<svg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><defs><linearGradient id='podGradient' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%23AF52FF;stop-opacity:1' /><stop offset='100%' style='stop-color:%235C5CFF;stop-opacity:1' /></linearGradient></defs><rect width='200' height='200' rx='0' fill='url(%23podGradient)'/><g fill='white'><rect x='55' y='85' width='12' height='30' rx='6' opacity='0.6'/><rect x='75' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='95' y='55' width='12' height='90' rx='6'/><rect x='115' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='135' y='85' width='12' height='30' rx='6' opacity='0.6'/></g></svg>">
-                        <div class="mini-text">
-                            <div id="miniTitle">请选择节目</div>
-                            <div id="miniAuthor">PODCAST</div>
-                        </div>
+                        <img id="miniCover" src="data:image/svg+xml,<svg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><rect width='200' height='200' fill='%23ccc'/></svg>">
+                        <div class="mini-text"><div id="miniTitle">请选择节目</div><div id="miniAuthor">PODCAST</div></div>
                     </div>
                     <div class="mini-controls">
-                        <button class="mini-play-btn" id="miniPlayBtn" onclick="event.stopPropagation(); window.handleToggle()">
-                            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                        </button>
+                        <button class="mini-play-btn" id="miniPlayBtn" onclick="event.stopPropagation(); window.handleToggle()"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
                         <button class="mini-speed-btn-text" id="miniSpeedBtn" onclick="event.stopPropagation(); window.toggleSpeed()">1.0x</button>
                     </div>
                 </div>
@@ -152,49 +78,27 @@
         </section>
     </div>
 
-    <div id="episodeModalOverlay" class="modal-overlay" onclick="window.closeModal()">
-        <div class="episode-modal" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h3 id="modalPodTitle">播客节目</h3>
-                <button class="modal-close-x" onclick="window.closeModal()">&times;</button>
-            </div>
-            <div id="modalEpisodeList" class="modal-content"></div>
-        </div>
-    </div>
+    <div id="episodeModalOverlay" class="modal-overlay" onclick="window.closeModal()"><div class="episode-modal" onclick="event.stopPropagation()"><div class="modal-header"><h3 id="modalPodTitle">播客节目</h3><button class="modal-close-x" onclick="window.closeModal()">&times;</button></div><div id="modalEpisodeList" class="modal-content"></div></div></div>
 
     <div id="playerOverlay" class="p-overlay">
         <div id="dynamicBg" class="p-dynamic-bg"></div>
-        <div class="p-header-nav">
-            <button class="p-close-btn" onclick="window.closePlayer()">
-                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
-            </button>
-        </div>
+        <div class="p-header-nav"><button class="p-close-btn" onclick="window.closePlayer()"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="6 9 12 15 18 9"></polyline></svg></button></div>
         <div class="p-main-content">
             <div class="p-cover-wrap"><img id="playerCover" src=""></div>
-            
             <div class="p-controls-area">
-                <div class="p-info-stack">
-                    <h2 id="playerTitle">未播放</h2>
-                    <p id="playerAuthor">作者</p>
-                </div>
-                
+                <div class="p-info-stack"><h2 id="playerTitle">未播放</h2><p id="playerAuthor">作者</p></div>
                 <div class="p-progress-wrap">
                     <input type="range" class="p-slider" value="0" id="progressRange">
                     <div class="p-time-info"><span id="currentTime">0:00</span><span id="durationTime">0:00</span></div>
                 </div>
-
                 <div class="p-controls">
                     <button class="p-btn-sec" onclick="window.seekOffset(-15)"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2.5 2v6h6M2.66 15.57a10 10 0 1 0 .57-8.38"/><text x="12" y="15.5" font-size="7" font-weight="900" text-anchor="middle" fill="currentColor" stroke="none">15</text></svg></button>
                     <button class="p-btn-play-large" id="mainPlayBtn" onclick="window.handleToggle()"><svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
                     <button class="p-btn-sec" onclick="window.seekOffset(15)"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/><text x="12" y="15.5" font-size="7" font-weight="900" text-anchor="middle" fill="currentColor" stroke="none">15</text></svg></button>
                 </div>
-
                 <div class="p-sub-actions">
                     <button class="p-action-pill" id="fullSpeedBtn" onclick="window.toggleSpeed()">1.0x</button>
-                    <button class="p-action-pill" id="markDoneBtn" onclick="window.toggleCurrentEpisodeDone()">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="3.5" style="margin-right:4px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        <span>已读</span>
-                    </button>
+                    <button class="p-action-pill" id="markDoneBtn" onclick="window.toggleCurrentEpisodeDone()"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="3.5" style="margin-right:4px;"><polyline points="20 6 9 17 4 12"></polyline></svg><span>已读</span></button>
                 </div>
             </div>
         </div>
@@ -204,11 +108,7 @@
         import { PlayerCore } from './js/player-core.js';
         
         let allPodcastsData = [];
-        try {
-            allPodcastsData = JSON.parse(localStorage.getItem('podcast_db') || '[]');
-        } catch(e) {
-            allPodcastsData = [];
-        }
+        try { allPodcastsData = JSON.parse(localStorage.getItem('podcast_db') || '[]'); } catch(e) { allPodcastsData = []; }
 
         const speeds = [1.0, 1.25, 1.5, 2.0];
         let currentSpeedIndex = 0;
@@ -216,23 +116,11 @@
 
         const moreMenu = document.getElementById('moreMenu');
         const menuToggleBtn = document.getElementById('menuToggleBtn');
-        
-        menuToggleBtn.onclick = (e) => {
-            e.stopPropagation();
-            moreMenu.classList.toggle('show');
-        };
+        menuToggleBtn.onclick = (e) => { e.stopPropagation(); moreMenu.classList.toggle('show'); };
+        document.addEventListener('click', () => moreMenu.classList.remove('show'));
 
-        document.addEventListener('click', () => {
-            moreMenu.classList.remove('show');
-        });
-
-        document.getElementById('importAction').onclick = () => {
-            document.getElementById('rssFileInput').click();
-        };
-
-        document.getElementById('exportAction').onclick = () => {
-            handleExport();
-        };
+        document.getElementById('importAction').onclick = () => document.getElementById('rssFileInput').click();
+        document.getElementById('exportAction').onclick = () => handleExport();
 
         function updateThemeUI(isDark) {
             const icon = document.getElementById('themeIcon');
@@ -259,20 +147,13 @@
             if (mini && mini.classList.contains('is-empty')) {
                 mini.classList.add('mini-shake');
                 setTimeout(() => mini.classList.remove('mini-shake'), 300);
-            } else {
-                document.getElementById('playerOverlay').classList.add('is-active');
-            }
+            } else { document.getElementById('playerOverlay').classList.add('is-active'); }
         };
         window.closePlayer = () => document.getElementById('playerOverlay').classList.remove('is-active');
         window.closeModal = () => {
             const modal = document.querySelector('.episode-modal');
-            modal.style.transform = 'translateY(30px)';
-            modal.style.opacity = '0';
-            setTimeout(() => {
-                document.getElementById('episodeModalOverlay').style.display = 'none';
-                modal.style.transform = '';
-                modal.style.opacity = '';
-            }, 250);
+            modal.style.transform = 'translateY(30px)'; modal.style.opacity = '0';
+            setTimeout(() => { document.getElementById('episodeModalOverlay').style.display = 'none'; modal.style.transform = ''; modal.style.opacity = ''; }, 250);
         };
 
         window.handleToggle = () => {
@@ -290,9 +171,7 @@
             document.getElementById('fullSpeedBtn').innerText = text;
         };
 
-        window.seekOffset = (s) => {
-            PlayerCore.seekOffset(s);
-        };
+        window.seekOffset = (s) => PlayerCore.seekOffset(s);
 
         window.updatePlayIcons = (isPlaying) => {
             const playSvg = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
@@ -308,23 +187,16 @@
             if(pod === -1 || ep === -1) return;
             const episode = allPodcastsData[pod].episodes[ep];
             episode.isFinished = !episode.isFinished;
-            const btn = document.getElementById('markDoneBtn');
-            btn.classList.toggle('is-active', episode.isFinished);
+            document.getElementById('markDoneBtn').classList.toggle('is-active', episode.isFinished);
             localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
-            if(document.getElementById('episodeModalOverlay').style.display === 'flex') {
-                window.renderEpisodeList(pod);
-            }
+            if(document.getElementById('episodeModalOverlay').style.display === 'flex') window.renderEpisodeList(pod);
         };
 
         window.renderEpisodeList = (podIdx) => {
-            const p = allPodcastsData[podIdx];
-            if(!p) return;
-            const modalOverlay = document.getElementById('episodeModalOverlay');
+            const p = allPodcastsData[podIdx]; if(!p) return;
             const listContainer = document.getElementById('modalEpisodeList');
             document.getElementById('modalPodTitle').innerText = p.title;
-            listContainer.innerHTML = ""; 
-            modalOverlay.style.display = 'flex'; 
-
+            listContainer.innerHTML = ""; document.getElementById('episodeModalOverlay').style.display = 'flex'; 
             p.episodes.forEach((ep, epIdx) => {
                 const item = document.createElement('div');
                 item.className = `episode-list-item ${ep.isFinished ? 'is-finished' : ''}`;
@@ -345,14 +217,7 @@
                     PlayerCore.audio.playbackRate = speeds[currentSpeedIndex];
                     window.updatePlayIcons(true);
                 };
-                item.innerHTML = `
-                    <img class="ep-list-cover" src="${ep.image || p.image}">
-                    <div class="ep-list-info">
-                        <div class="ep-list-title">${ep.title}</div>
-                        <div class="ep-list-meta">${ep.isFinished ? '已听完' : '播放单集'}</div>
-                    </div>
-                    ${ep.isFinished ? '<div class="finished-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg></div>' : ''}
-                `;
+                item.innerHTML = `<img class="ep-list-cover" src="${ep.image || p.image}"><div class="ep-list-info"><div class="ep-list-title">${ep.title}</div><div class="ep-list-meta">${ep.isFinished ? '已听完' : '播放单集'}</div></div>${ep.isFinished ? '<div class="finished-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg></div>' : ''}`;
                 listContainer.appendChild(item);
             });
         };
@@ -363,44 +228,20 @@
                 try {
                     const text = await file.text();
                     if (file.name.toLowerCase().endsWith('.json')) {
-                        const backupData = JSON.parse(text);
-                        if (Array.isArray(backupData)) {
-                            backupData.forEach(newPod => {
-                                const existingIdx = allPodcastsData.findIndex(x => x.title === newPod.title);
-                                if (existingIdx === -1) {
-                                    allPodcastsData.push(newPod);
-                                } else {
-                                    newPod.episodes.forEach(newEp => {
-                                        const oldEp = allPodcastsData[existingIdx].episodes.find(e => e.audioUrl === newEp.audioUrl);
-                                        if (oldEp) oldEp.isFinished = newEp.isFinished;
-                                    });
-                                }
-                            });
-                        }
-                        continue;
+                        const data = JSON.parse(text);
+                        if (Array.isArray(data)) data.forEach(np => {
+                            const exIdx = allPodcastsData.findIndex(x => x.title === np.title);
+                            if (exIdx === -1) allPodcastsData.push(np);
+                            else np.episodes.forEach(ne => { const oe = allPodcastsData[exIdx].episodes.find(e => e.audioUrl === ne.audioUrl); if(oe) oe.isFinished = ne.isFinished; });
+                        });
+                    } else {
+                        const dom = new DOMParser().parseFromString(text, "text/xml");
+                        const ch = dom.querySelector("channel"); if(!ch) continue;
+                        const getImg = (el) => { const i = el.getElementsByTagName("itunes:image")[0]; return i ? i.getAttribute("href") : (el.querySelector("image > url")?.textContent || ""); };
+                        const pod = { title: ch.querySelector("title")?.textContent || "未知", author: ch.querySelector("itunes\\:author, author")?.textContent || "未知", image: getImg(ch), episodes: Array.from(dom.querySelectorAll("item")).map(it => ({ title: it.querySelector("title")?.textContent, audioUrl: it.querySelector("enclosure")?.getAttribute("url"), image: getImg(it) || getImg(ch), isFinished: false })) };
+                        if (!allPodcastsData.find(x => x.title === pod.title)) allPodcastsData.push(pod);
                     }
-                    const dom = new DOMParser().parseFromString(text, "text/xml");
-                    const channel = dom.querySelector("channel");
-                    if (!channel) continue;
-                    const getImg = (el) => {
-                        const i = el.getElementsByTagName("itunes:image")[0];
-                        return i ? i.getAttribute("href") : (el.querySelector("image > url")?.textContent || "");
-                    };
-                    const pod = {
-                        title: channel.querySelector("title")?.textContent || "未知播客",
-                        author: channel.querySelector("itunes\\:author, author")?.textContent || "未知作者",
-                        image: getImg(channel),
-                        episodes: Array.from(dom.querySelectorAll("item")).map(item => ({
-                            title: item.querySelector("title")?.textContent,
-                            audioUrl: item.querySelector("enclosure")?.getAttribute("url"),
-                            image: getImg(item) || getImg(channel),
-                            isFinished: false 
-                        }))
-                    };
-                    if (!allPodcastsData.find(x => x.title === pod.title)) allPodcastsData.push(pod);
-                } catch(err) {
-                    console.error("文件解析错误:", err);
-                }
+                } catch(err) { console.error("解析错误:", err); }
             }
             localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
             renderPodcastList();
@@ -410,80 +251,46 @@
             if (allPodcastsData.length === 0) return;
             const blob = new Blob([JSON.stringify(allPodcastsData, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `podcast_backup_${new Date().toISOString().slice(0,10)}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
+            const a = document.createElement('a'); a.href = url; a.download = `backup_${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(url);
         }
 
         function renderPodcastList() {
-            const grid = document.getElementById('mainGrid');
-            if(!grid) return;
-            const itemsToRemove = grid.querySelectorAll('.podcast-card, .grid-footer-spacer');
-            itemsToRemove.forEach(c => c.remove());
+            const grid = document.getElementById('mainGrid'); if(!grid) return;
+            grid.querySelectorAll('.podcast-card, .grid-footer-spacer').forEach(c => c.remove());
             allPodcastsData.forEach((p, i) => {
-                const card = document.createElement('div');
-                card.className = 'podcast-card';
+                const card = document.createElement('div'); card.className = 'podcast-card';
                 card.style.setProperty('--card-cover', `url('${p.image}')`);
                 card.onclick = () => { if(!document.body.classList.contains('edit-mode')) window.renderEpisodeList(i); };
-                card.innerHTML = `
-                    <div class="card-inner">
-                        <div class="card-info">
-                            <h3>${p.title}</h3>
-                            <p>${p.author}</p>
-                        </div>
-                    </div>
-                    <div class="delete-badge">
-                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="white" stroke-width="3" fill="none">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                    </div>`;
-                card.querySelector('.delete-badge').onclick = (e) => {
-                    e.stopPropagation();
-                    allPodcastsData.splice(i, 1);
-                    localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
-                    renderPodcastList();
-                };
+                card.innerHTML = `<div class="card-inner"><div class="card-info"><h3>${p.title}</h3><p>${p.author}</p></div></div><div class="delete-badge"><svg viewBox="0 0 24 24" width="14" height="14" stroke="white" stroke-width="3" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>`;
+                card.querySelector('.delete-badge').onclick = (e) => { e.stopPropagation(); allPodcastsData.splice(i, 1); localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData)); renderPodcastList(); };
                 grid.appendChild(card);
             });
-            const spacer = document.createElement('div');
-            spacer.className = 'grid-footer-spacer';
-            grid.appendChild(spacer);
+            const sp = document.createElement('div'); sp.className = 'grid-footer-spacer'; grid.appendChild(sp);
         }
 
         document.addEventListener('DOMContentLoaded', () => {
             renderPodcastList();
-            const savedTheme = localStorage.getItem('podcast_theme');
-            if (savedTheme === 'dark') updateThemeUI(true);
-            const fileInput = document.getElementById('rssFileInput');
-            if(fileInput) fileInput.onchange = handleFileUpload;
-            const editBtn = document.getElementById('editBtn');
-            if(editBtn) editBtn.onclick = (e) => { e.stopPropagation(); document.body.classList.toggle('edit-mode'); };
+            if (localStorage.getItem('podcast_theme') === 'dark') updateThemeUI(true);
+            const fi = document.getElementById('rssFileInput'); if(fi) fi.onchange = handleFileUpload;
+            const eb = document.getElementById('editBtn'); if(eb) eb.onclick = (e) => { e.stopPropagation(); document.body.classList.toggle('edit-mode'); };
 
-            const range = document.getElementById('progressRange');
-            if(range) {
-                range.oninput = (e) => PlayerCore.seek(e.target.value);
-                // 关键点：松手时立刻强制同步一次系统状态
-                range.onchange = () => { if(typeof PlayerCore.forceSyncState === 'function') PlayerCore.forceSyncState(); };
+            const rg = document.getElementById('progressRange');
+            if(rg) {
+                rg.oninput = (e) => PlayerCore.seek(e.target.value);
+                // 拖动结束时强刷
+                rg.onchange = () => { if(typeof PlayerCore.forceSyncState === 'function') PlayerCore.forceSyncState(); };
             }
 
             PlayerCore.onTimeUpdate((pct, cur, tot) => {
-                const f = document.getElementById('miniProgressFill');
-                if(f) f.style.width = pct + '%';
-                const pr = document.getElementById('progressRange');
-                if(pr) pr.value = pct;
-                const ct = document.getElementById('currentTime');
-                if(ct) ct.innerText = cur;
-                const dt = document.getElementById('durationTime');
-                if(dt) dt.innerText = tot;
+                document.getElementById('miniProgressFill').style.width = pct + '%';
+                document.getElementById('progressRange').value = pct;
+                document.getElementById('currentTime').innerText = cur;
+                document.getElementById('durationTime').innerText = tot;
             });
 
-            // 系统级播放状态回传监听
+            // 监听 audio 元素底层的播放暂停，确保 UI 同步
             PlayerCore.audio.addEventListener('play', () => window.updatePlayIcons(true));
             PlayerCore.audio.addEventListener('pause', () => window.updatePlayIcons(false));
-
             PlayerCore.audio.onended = () => {
                 window.updatePlayIcons(false);
                 PlayerCore._shadowTime = 0;
