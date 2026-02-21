@@ -214,6 +214,7 @@
             const listContainer = document.getElementById('modalEpisodeList');
             const scrollArea = document.getElementById('modalScrollArea');
             const desc = document.getElementById('modalPodDesc');
+            const toggleBtn = document.getElementById('descToggleBtn');
             
             document.getElementById('modalBigCover').src = p.image;
             document.getElementById('modalPodTitle').innerText = p.title;
@@ -222,11 +223,21 @@
             
             // 重置展开状态
             desc.classList.remove('is-expanded');
-            document.getElementById('descToggleBtn').innerText = "展开全文";
+            toggleBtn.innerText = "展开全文";
             
             listContainer.innerHTML = ""; 
             scrollArea.scrollTop = 0;
             modalOverlay.style.display = 'flex'; 
+
+            // 核心修改：检测文本是否溢出以决定是否显示按钮
+            // 需要在渲染后的下一帧执行，确保元素已有高度
+            requestAnimationFrame(() => {
+                if (desc.scrollHeight > desc.clientHeight) {
+                    toggleBtn.style.display = 'block';
+                } else {
+                    toggleBtn.style.display = 'none';
+                }
+            });
 
             p.episodes.forEach(ep => {
                 const item = document.createElement('div');
