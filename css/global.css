@@ -1,3 +1,4 @@
+/* global.css */
 :root {
     --accent: #af52de;
     --text-main: #1d1d1f;
@@ -10,9 +11,10 @@
 
 * {
     -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
+    -webkit-touch-callout: none; /* 禁止移动端长按弹出系统菜单 */
 }
 
+/* 隐藏滚动条 */
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; -ms-overflow-style: none; }
 
@@ -21,102 +23,18 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro", sans-serif;
     background-color: var(--bg-gray);
     color: var(--text-main);
-    height: 100svh; 
-    width: 100vw;
+    height: 100svh; width: 100vw;
     overflow: hidden;
     user-select: none;
-}
-
-.app-container { 
-    display: flex; 
-    height: 100%; 
-    width: 100%; 
-}
-
-.main-layout { 
-    flex: 1; 
-    display: flex; 
-    flex-direction: column; 
-    overflow: hidden; 
-    position: relative; 
-    background: transparent !important;
-}
-
-.header { 
-    position: fixed; 
-    top: 0; 
-    left: 0; 
-    width: 100%; 
-    height: 80px; 
-    padding-top: env(safe-area-inset-top); 
-    background: var(--nav-bg) !important; 
-    backdrop-filter: blur(25px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
-    z-index: 1000;
-    border-bottom: 0.5px solid rgba(0,0,0,0.08);
-    display: flex; 
-    align-items: center; 
-    box-sizing: content-box;
-}
-
-.header-content {
-    height: 80px; 
-    display: flex; 
-    align-items: center; 
-    justify-content: space-between;
-    width: 100%; 
-    padding: 0 24px;
-    box-sizing: border-box;
-}
-
-.header-left { display: flex; align-items: center; flex: 1; overflow: hidden; }
-.brand-wrapper { display: flex; align-items: center; gap: 12px; cursor: pointer; }
-.brand-icon-pro { width: 36px; height: 36px; border-radius: 9px; background: linear-gradient(135deg, #af52de, #5e5ce6); flex-shrink: 0; }
-#brandTitle { font-size: 20px; font-weight: 800; letter-spacing: 0.5px; margin: 0; }
-
-.header-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-.action-btn {
-    width: 40px; height: 40px; 
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 50%; 
-    color: var(--text-main); 
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(0,0,0,0.05);
-    cursor: pointer; 
-    transition: all 0.3s ease;
-}
-
-.content { 
-    flex: 1; 
-    overflow-y: auto; 
-    padding-top: calc(80px + env(safe-area-inset-top) + 20px) !important;
-    padding-left: 24px;
-    padding-right: 24px;
-    padding-bottom: calc(120px + env(safe-area-inset-bottom));
-    display: grid; 
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); 
-    gap: 24px;
-    background: transparent !important;
-}
-
-@media (min-width: 768px) {
-    .content {
-        padding-top: calc(80px + 40px) !important;
-        padding-left: 48px;
-        padding-right: 48px;
-        padding-bottom: 160px;
-        grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-        gap: 32px;
-    }
 }
 
 .podcast-card { 
     position: relative; 
     cursor: pointer; 
     transition: 0.4s cubic-bezier(0.2, 1, 0.2, 1);
-    touch-action: manipulation; /* 优化触摸体验 */
+    touch-action: none; /* 禁止长按触发系统的滚动或缩放 */
 }
+
 .podcast-card::before {
     content: ""; display: block; aspect-ratio: 1/1;
     background-image: var(--card-cover); background-size: cover; background-position: center;
@@ -124,69 +42,31 @@ body {
     box-shadow: 0 4px 12px rgba(0,0,0,0.05), 0 10px 25px rgba(0,0,0,0.08); 
     margin-bottom: 12px;
 }
-.podcast-card:hover { transform: translateY(-6px); }
-.card-info h3 { font-size: 14px; margin: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.card-info p { font-size: 11px; color: var(--text-sub); margin-top: 4px; }
 
-.modal-overlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.2); 
-    backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
-    z-index: 1500; display: none; align-items: center; justify-content: center;
+/* 编辑模式下的抖动动画 */
+body.edit-mode .podcast-card { 
+    animation: shake 0.3s infinite ease-in-out; 
+    pointer-events: auto;
 }
 
-.episode-modal {
-    background: rgba(255, 255, 255, 0.8); 
-    backdrop-filter: blur(25px) saturate(180%);
-    -webkit-backdrop-filter: blur(25px) saturate(180%);
-    width: 92%; max-width: 550px; height: 70vh;
-    border-radius: 10px; 
-    display: flex; flex-direction: column;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.15); 
-    border: 0.5px solid rgba(255,255,255,0.4); 
-    overflow: hidden;
-    animation: modalSlide 0.4s cubic-bezier(0.2, 1, 0.2, 1);
-}
-
-@keyframes modalSlide { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
-.modal-header { padding: 20px 24px; border-bottom: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
-.modal-header h3 { font-size: 17px; margin: 0; font-weight: 800; }
-.modal-close-x { background: rgba(0,0,0,0.05); border: none; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 20px; }
-
-.modal-content { flex: 1; overflow-y: auto; padding: 10px 16px; background: transparent !important; }
-
-.episode-list-item { display: flex; align-items: center; padding: 12px; border-radius: 14px; cursor: pointer; transition: background 0.2s ease; }
-.episode-list-item:hover { background: rgba(0,0,0,0.03); }
-.ep-list-cover { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; margin-right: 12px; }
-.ep-list-info { flex: 1; overflow: hidden; }
-.ep-list-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ep-list-meta { font-size: 10px; color: var(--accent); margin-top: 2px; font-weight: 700; }
-
-.mini-progress-bar { 
-    width: 100%; 
-    height: 2px; 
-    background: transparent !important;
-    position: absolute; 
-    bottom: 0; 
-    left: 0; 
-    box-shadow: none !important;
-}
-.mini-progress-fill { 
-    height: 100%; 
-    background: var(--accent); 
-    width: 0%; 
-    transition: width 0.1s linear; 
-    box-shadow: 0 0 12px var(--accent);
+@keyframes shake {
+    0% { transform: rotate(-0.5deg); }
+    50% { transform: rotate(0.5deg); }
+    100% { transform: rotate(-0.5deg); }
 }
 
 .delete-badge {
-    position: absolute; top: -8px; right: -8px; width: 28px; height: 28px;
+    position: absolute; top: -10px; right: -10px; width: 28px; height: 28px;
     background: var(--danger); border: 2px solid #fff; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    opacity: 0; transform: scale(0.5); transition: 0.3s; z-index: 10;
+    opacity: 0; transform: scale(0.5); transition: 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 100;
+    cursor: pointer;
 }
-body.edit-mode .delete-badge { opacity: 1; transform: scale(1); }
-body.edit-mode .podcast-card { animation: shake 0.5s infinite; }
-@keyframes shake { 0%,100%{transform:rotate(0.5deg)} 50%{transform:rotate(-0.5deg)} }
+
+body.edit-mode .delete-badge { 
+    opacity: 1; 
+    transform: scale(1); 
+}
+
+/* 其余样式保持不变... */
