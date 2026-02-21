@@ -28,11 +28,7 @@ body {
     user-select: none;
 }
 
-.app-container { 
-    display: flex; 
-    height: 100%; 
-    width: 100%; 
-}
+.app-container { display: flex; height: 100%; width: 100%; }
 
 .main-layout { 
     flex: 1; 
@@ -88,6 +84,11 @@ body {
     transition: all 0.3s ease;
 }
 
+body.edit-mode #editBtn {
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
 .content { 
     flex: 1; 
     overflow-y: auto; 
@@ -112,49 +113,15 @@ body {
     }
 }
 
-/* --- 优化后的卡片交互 --- */
-.podcast-card { 
-    position: relative; 
-    cursor: pointer; 
-    /* 使用 spring 动画曲线 */
-    transition: transform 0.4s cubic-bezier(0.2, 1, 0.2, 1), box-shadow 0.4s ease; 
-    will-change: transform;
-}
-
+.podcast-card { position: relative; cursor: pointer; transition: 0.4s cubic-bezier(0.2, 1, 0.2, 1); }
 .podcast-card::before {
     content: ""; display: block; aspect-ratio: 1/1;
     background-image: var(--card-cover); background-size: cover; background-position: center;
     border-radius: var(--radius-card); 
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05), 0 8px 20px rgba(0,0,0,0.06); 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05), 0 10px 25px rgba(0,0,0,0.08); 
     margin-bottom: 12px;
-    transition: box-shadow 0.4s ease;
 }
-
-/* PC 端悬停：浮起并加深阴影 */
-@media (hover: hover) {
-    .podcast-card:not(.edit-mode):hover { 
-        transform: translateY(-8px); 
-    }
-    .podcast-card:not(.edit-mode):hover::before {
-        box-shadow: 0 12px 30px rgba(0,0,0,0.12);
-    }
-}
-
-/* 移动端/全端点击：轻微按压反馈 */
-.podcast-card:active { 
-    transform: scale(0.96); 
-    transition: transform 0.1s ease; /* 按下时反馈要快 */
-}
-
-/* 编辑模式逻辑修复 */
-body.edit-mode .podcast-card { 
-    animation: shake 0.5s infinite; 
-    transform: none !important; /* 强制取消 hover 的 translateY 位移，解决高出一截的问题 */
-}
-body.edit-mode .podcast-card:active {
-    transform: scale(0.96) !important; /* 编辑模式下允许点击缩放反馈 */
-}
-
+.podcast-card:hover { transform: translateY(-6px); }
 .card-info h3 { font-size: 14px; margin: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-info p { font-size: 11px; color: var(--text-sub); margin-top: 4px; }
 
@@ -187,15 +154,14 @@ body.edit-mode .podcast-card:active {
 
 .modal-content { flex: 1; overflow-y: auto; padding: 10px 16px; background: transparent !important; }
 
-.episode-list-item { display: flex; align-items: center; padding: 12px; border-radius: 14px; cursor: pointer; transition: background 0.2s ease, transform 0.1s ease; }
+.episode-list-item { display: flex; align-items: center; padding: 12px; border-radius: 14px; cursor: pointer; transition: background 0.2s ease; }
 .episode-list-item:hover { background: rgba(0,0,0,0.03); }
-.episode-list-item:active { transform: scale(0.98); }
-
 .ep-list-cover { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; margin-right: 12px; }
 .ep-list-info { flex: 1; overflow: hidden; }
 .ep-list-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ep-list-meta { font-size: 10px; color: var(--accent); margin-top: 2px; font-weight: 700; }
 
+/* 核心修改：进度条彻底隐身 + 激光发光 */
 .mini-progress-bar { 
     width: 100%; 
     height: 2px; 
@@ -220,4 +186,5 @@ body.edit-mode .podcast-card:active {
     opacity: 0; transform: scale(0.5); transition: 0.3s; z-index: 10;
 }
 body.edit-mode .delete-badge { opacity: 1; transform: scale(1); }
-@keyframes shake { 0%,100%{transform:rotate(1.5deg)} 50%{transform:rotate(-1.5deg)} }
+body.edit-mode .podcast-card { animation: shake 0.5s infinite; }
+@keyframes shake { 0%,100%{transform:rotate(0.5deg)} 50%{transform:rotate(-0.5deg)} }
