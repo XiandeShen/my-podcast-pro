@@ -348,8 +348,8 @@
                     
                     document.getElementById('markDoneBtn').classList.toggle('is-active', !!ep.isFinished);
                     
-                    // 关键：恢复设置 MediaSession 元数据
-                    PlayerCore.updateMetadata(ep.title, p.title, cover);
+                    // 不设置元数据，仅保留时间同步
+                    // PlayerCore.updateMetadata(ep.title, p.title, cover);
                     
                     PlayerCore.play(ep.audioUrl);
                     PlayerCore.audio.playbackRate = speeds[currentSpeedIndex];
@@ -500,7 +500,7 @@
                 if(dt) dt.innerText = tot;
             });
 
-            // 播放结束时仅更新 UI，不再手动调用 MediaSession 更新（内部已自动处理）
+            // 播放结束时仅更新 UI
             PlayerCore.audio.onended = () => {
                 window.updatePlayIcons(false);
             };
