@@ -1,17 +1,16 @@
-// js/player-core.js 
+// js/player-core.js
 
 const sysAudio = document.getElementById('main-audio-player') || new Audio();
 
 export const PlayerCore = {
     audio: sysAudio,
     _onTimeUpdate: null,
-    _shadowTime: 0, 
+    _lastSyncRealTime: 0,
 
     play(url) {
         if (!url) return;
         
         if (this.audio.src !== url) {
-            this._shadowTime = 0;
             this.audio.src = url;
             this.audio.load();
         }
@@ -22,8 +21,8 @@ export const PlayerCore = {
         if (playPromise !== undefined) {
             playPromise.then(() => {
                 this.audio.playbackRate = currentRate;
-                // 延迟 500ms 推送状态，等系统反应过来
-                setTimeout(() => this.forceSyncState(), 500);
+                // 关键：播放成功后延迟触发“双跳唤醒”
+                setTimeout(() => this.wakeupSystemTimer(), 300);
             }).catch(e => console.error("Playback Error:", e));
         }
 
@@ -31,53 +30,61 @@ export const PlayerCore = {
             const cur = this.audio.currentTime;
             const dur = this.audio.duration;
 
-            if (isFinite(cur) && cur > 0) {
-                this._shadowTime = cur;
-            }
-
             if (this._onTimeUpdate) {
                 const safeDur = (isFinite(dur) && dur > 0) ? dur : 0;
                 const safePct = safeDur > 0 ? (cur / safeDur) * 100 : 0;
                 this._onTimeUpdate(safePct, this.format(cur), this.format(safeDur));
             }
+
+            // 每隔 10 秒强制同步一次，防止系统计时器漂移或睡眠
+            if (Math.abs(cur - this._lastSyncRealTime) > 10) {
+                this.forceSyncState();
+                this._lastSyncRealTime = cur;
+            }
         };
 
-        // 关键：监听 playing 事件（真正开始出声的时候）
-        this.audio.onplaying = () => {
-            this.forceSyncState();
-        };
+        this.audio.onplaying = () => this.forceSyncState();
+        this.audio.onpause = () => this.forceSyncState();
+        this.audio.onseeked = () => this.forceSyncState();
+    },
 
-        this.audio.onpause = () => {
-            this.forceSyncState();
-        };
-
-        this.audio.onseeked = () => {
-            this.forceSyncState();
-        };
+    // 唤醒补丁：通过极小的位移强制系统通知栏刷新计时引擎
+    wakeupSystemTimer() {
+        if (!('mediaSession' in navigator) || !isFinite(this.audio.duration)) return;
+        
+        const actual = this.audio.currentTime;
+        // 第一跳：推一个微小的偏离值
+        this.doSync(actual + 0.001);
+        
+        // 第二跳：100ms 后推回真实值，形成“动态”信号
+        setTimeout(() => {
+            this.doSync(this.audio.currentTime);
+            this._lastSyncRealTime = this.audio.currentTime;
+        }, 100);
     },
 
     forceSyncState() {
+        this.doSync(this.audio.currentTime);
+    },
+
+    doSync(timeValue) {
         if (!('mediaSession' in navigator)) return;
-
         const dur = this.audio.duration;
-        let cur = this.audio.currentTime;
+        if (!isFinite(dur) || dur <= 0) return;
 
-        // 状态声明
         navigator.mediaSession.playbackState = this.audio.paused ? "paused" : "playing";
-
-        if (isFinite(dur) && dur > 0) {
-            try {
-                // 这里的补丁：如果当前是 0，给一个极小值，欺骗系统引擎开始计时
-                const position = (cur <= 0) ? 0.001 : Math.min(cur, dur);
-                
-                navigator.mediaSession.setPositionState({
-                    duration: dur,
-                    playbackPosition: position,
-                    playbackRate: this.audio.playbackRate || 1.0
-                });
-            } catch (e) {
-                console.warn("MediaSession Position Error:", e);
-            }
+        
+        try {
+            // 必须严格限制范围，防止越界导致安卓 MediaSession 崩溃
+            const safePos = Math.min(Math.max(0, timeValue), dur);
+            
+            navigator.mediaSession.setPositionState({
+                duration: dur,
+                playbackPosition: safePos,
+                playbackRate: this.audio.playbackRate || 1.0
+            });
+        } catch (e) {
+            console.warn("Sync error:", e);
         }
     },
 
@@ -101,9 +108,8 @@ export const PlayerCore = {
                     }
                 }
             };
-
-            Object.entries(actions).forEach(([action, handler]) => {
-                try { navigator.mediaSession.setActionHandler(action, handler); } catch (e) {}
+            Object.entries(actions).forEach(([act, hdl]) => {
+                try { navigator.mediaSession.setActionHandler(act, hdl); } catch (e) {}
             });
         }
     },
