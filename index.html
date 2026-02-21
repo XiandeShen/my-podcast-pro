@@ -295,7 +295,9 @@
         };
 
         window.seekOffset = (s) => {
-            if(PlayerCore.audio.duration) PlayerCore.audio.currentTime = Math.max(0, Math.min(PlayerCore.audio.currentTime+s, PlayerCore.audio.duration));
+            if(PlayerCore.audio.duration) {
+                PlayerCore.seekOffset(s);
+            }
         };
 
         window.updatePlayIcons = (isPlaying) => {
@@ -487,7 +489,15 @@
             if(editBtn) editBtn.onclick = (e) => { e.stopPropagation(); document.body.classList.toggle('edit-mode'); };
 
             const range = document.getElementById('progressRange');
-            if(range) range.oninput = (e) => PlayerCore.seek(e.target.value);
+            if(range) {
+                // 修改点：使用 change 事件配合 input，确保拖动释放后系统同步进度
+                range.oninput = (e) => PlayerCore.seek(e.target.value);
+                range.onchange = () => {
+                    if (typeof PlayerCore.forceSyncState === 'function') {
+                        PlayerCore.forceSyncState();
+                    }
+                };
+            }
 
             PlayerCore.onTimeUpdate((pct, cur, tot) => {
                 const f = document.getElementById('miniProgressFill');
@@ -500,7 +510,11 @@
                 if(dt) dt.innerText = tot;
             });
 
-            PlayerCore.audio.onended = () => window.updatePlayIcons(false);
+            PlayerCore.audio.onended = () => {
+                window.updatePlayIcons(false);
+                // 播放结束强制清空影子时间，防止下一首误恢复进度
+                PlayerCore._shadowTime = 0;
+            };
         });
     </script>
 </body>
