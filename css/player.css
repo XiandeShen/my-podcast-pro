@@ -22,113 +22,92 @@
 
     z-index: 1000;
     display: flex; flex-direction: column; overflow: hidden; cursor: pointer;
-    
-    /* 核心动画优化：使用 cubic-bezier 让弹出和缩放更丝滑 */
-    transition: transform 0.4s cubic-bezier(0.2, 1, 0.2, 1), 
-                background 0.3s ease, 
-                box-shadow 0.3s ease;
-    will-change: transform;
+    transition: transform 0.4s cubic-bezier(0.2, 1, 0.2, 1);
 }
 
-/* PC 端：悬停时轻微放大并加强投影，增强“悬浮感” */
-@media (hover: hover) {
-    .mini-player:hover {
-        transform: translateX(-50%) translateY(-2px) scale(1.01);
-        background: rgba(255, 255, 255, 0.9);
-        box-shadow: 
-            0 0 0 0.5px rgba(0, 0, 0, 0.05),
-            0 15px 40px rgba(0, 0, 0, 0.15);
-    }
+/* 仅在非空状态下应用点击缩放，空状态由 JS 触发抖动 */
+.mini-player:not(.is-empty):active { 
+    transform: translateX(-50%) scale(0.96); 
 }
 
-/* 移动端/通用：点击时的按压反馈，产生“物理按键”的感觉 */
-.mini-player:active {
-    transform: translateX(-50%) scale(0.96);
-    transition: transform 0.1s ease; /* 缩回要快，回弹靠 transition 的 0.4s */
+.mini-progress-bar { width: 100%; height: 3px; background: rgba(0,0,0,0.03); position: absolute; bottom: 0; left: 0; }
+.mini-progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.1s linear; }
+
+.mini-player-content { flex: 1; display: flex; align-items: center; padding: 0 16px 0 0; gap: 12px; }
+
+.mini-info { flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; }
+
+#miniCover { 
+    width: 64px; height: 64px; 
+    border-radius: 0; 
+    object-fit: cover; 
+    flex-shrink: 0; 
+    margin: 0;
 }
 
-/* 状态：空音频时的抖动逻辑（保留并优化） */
-.mini-player.is-empty { cursor: default; }
-.mini-shake { animation: miniShakeAnim 0.4s cubic-bezier(.36,.07,.19,.97) both; }
-@keyframes miniShakeAnim {
-    10%, 90% { transform: translateX(-50%) translate3d(-1px, 0, 0); }
-    20%, 80% { transform: translateX(-50%) translate3d(2px, 0, 0); }
-    30%, 50%, 70% { transform: translateX(-50%) translate3d(-4px, 0, 0); }
-    40%, 60% { transform: translateX(-50%) translate3d(4px, 0, 0); }
-}
-
-.mini-player-content { 
-    flex: 1; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; 
-}
-
-.mini-info { display: flex; align-items: center; gap: 12px; flex: 1; overflow: hidden; }
-#miniCover { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-.mini-text { overflow: hidden; }
-#miniTitle { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
-#miniAuthor { font-size: 11px; color: var(--text-sub); margin-top: 2px; }
-
-.mini-controls { display: flex; align-items: center; gap: 14px; }
-
-/* 播放按钮动画优化 */
+.mini-text { min-width: 0; display: flex; flex-direction: column; }
+#miniTitle { font-size: 14px; font-weight: 700; color: #1d1d1f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#miniAuthor { font-size: 11px; color: var(--accent); font-weight: 600; }
+.mini-controls { display: flex; align-items: center; gap: 18px; padding-right: 16px; }
 .mini-play-btn { 
-    background: none; border: none; padding: 0; color: var(--text-main); cursor: pointer; 
-    transition: transform 0.2s ease;
+    background: none; border: none; cursor: pointer; color: #1d1d1f; padding: 0; display: flex;
+    transition: transform 0.1s ease;
 }
 .mini-play-btn:active { transform: scale(0.85); }
+.mini-speed-btn-text { background: none; border: none; color: #86868b; font-size: 13px; font-weight: 700; cursor: pointer; width: 32px; }
 
-.mini-speed-btn-text {
-    background: rgba(0,0,0,0.05); border: none; padding: 4px 8px; border-radius: 6px;
-    font-size: 11px; font-weight: 700; color: var(--text-main); cursor: pointer;
-    transition: all 0.2s ease;
-}
-@media (hover: hover) {
-    .mini-speed-btn-text:hover { background: rgba(0,0,0,0.1); }
-}
-
-/* 全屏播放器遮罩 */
+/* 全屏播放页 Overlay */
 .p-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: #000; z-index: 2000; display: none; flex-direction: column;
-    color: #fff; overflow: hidden;
+    background: #000; z-index: 2000; display: flex; flex-direction: column;
+    transform: translateY(100%); transition: transform 0.5s cubic-bezier(0.2, 1, 0.2, 1);
+    overflow: hidden;
 }
-.p-overlay.is-active { 
-    display: flex; 
-    animation: pSlideUp 0.5s cubic-bezier(0.32, 0.72, 0, 1); 
-}
-@keyframes pSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.p-overlay.is-active { transform: translateY(0); }
 
 .p-dynamic-bg {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    position: absolute; top: -10%; left: -10%; width: 120%; height: 120%;
     background-size: cover; background-position: center;
-    filter: blur(60px) brightness(0.5); opacity: 0.6; transform: scale(1.1);
-    z-index: -1; transition: background-image 0.8s ease;
+    filter: blur(50px) brightness(0.8);
+    opacity: 0.7; z-index: -1;
+    transition: background-image 0.8s ease;
 }
 
-.p-header-nav { height: 60px; display: flex; align-items: center; padding: 0 20px; }
-.p-close-btn { background: none; border: none; color: rgba(255,255,255,0.8); cursor: pointer; padding: 10px; }
-
-.p-main-content { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 30px 60px; }
-
-/* 封面图动画优化 */
-.p-cover-wrap { 
-    width: 100%; max-width: 320px; aspect-ratio: 1/1; margin-bottom: 40px; 
-    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+.p-header-nav { padding: 15px; display: flex; justify-content: center; position: relative; z-index: 2; flex-shrink: 0; }
+.p-close-btn { 
+    background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border: none; 
+    width: 40px; height: 40px; border-radius: 50%; color: #fff;
+    display: flex; align-items: center; justify-content: center; cursor: pointer; 
 }
-.p-overlay.is-active .p-cover-wrap { transform: scale(1); }
-#playerCover { width: 100%; height: 100%; border-radius: 12px; object-fit: cover; box-shadow: 0 20px 50px rgba(0,0,0,0.4); }
 
-.p-controls-area { width: 100%; max-width: 400px; }
-.p-info { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; }
-#playerTitle { font-size: 22px; font-weight: 800; margin: 0; line-height: 1.3; flex: 1; padding-right: 20px; }
-#playerAuthor { font-size: 16px; color: rgba(255,255,255,0.6); margin-top: 6px; }
+.p-main-content { 
+    flex: 1; display: flex; flex-direction: column; align-items: center; 
+    justify-content: center; padding: 0 30px 30px; position: relative; z-index: 2;
+    overflow: hidden;
+}
+
+@media (min-width: 768px) {
+    .p-main-content { flex-direction: row; gap: 60px; padding: 0 10%; }
+    .p-cover-wrap { flex: 1; display: flex; justify-content: flex-end; }
+    .p-controls-area { flex: 1; text-align: left; max-width: 400px; }
+}
+
+.p-cover-wrap { width: 65vw; max-width: 300px; aspect-ratio: 1/1; flex-shrink: 1; margin-bottom: 20px; }
+#playerCover { width: 100%; height: 100%; border-radius: 10px; object-fit: cover; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+
+.p-controls-area { width: 100%; color: #fff; flex-shrink: 0; }
+.p-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 12px; }
+.p-info-text { flex: 1; min-width: 0; }
+
+#playerTitle { 
+    font-size: 18px; font-weight: 700; margin: 0 0 4px; line-height: 1.2; 
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+#playerAuthor { font-size: 13px; color: rgba(255,255,255,0.7); font-weight: 600; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .p-speed-btn {
-    background: rgba(255,255,255,0.1); border: none; color: white; padding: 5px 10px;
+    background: rgba(255,255,255,0.2); color: #fff; border: none; padding: 5px 10px;
     border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer; backdrop-filter: blur(10px); flex-shrink: 0;
-    transition: background 0.2s ease;
-}
-@media (hover: hover) {
-    .p-speed-btn:hover { background: rgba(255,255,255,0.2); }
 }
 
 .p-progress-wrap { margin-bottom: 20px; }
@@ -139,18 +118,33 @@
 .p-time-info { display: flex; justify-content: space-between; font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 8px; }
 
 .p-controls { display: flex; align-items: center; justify-content: center; gap: 25px; }
-
-/* 大播放按钮点击效果 */
 .p-btn-play-large { 
     width: 68px; height: 68px; border-radius: 50%; background: #fff; color: #000; border: none; 
-    display: flex; align-items: center; justify-content: center; cursor: pointer; 
-    transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+    display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s;
 }
-.p-btn-play-large:active { transform: scale(0.9); }
-
+.p-btn-play-large:active { transform: scale(0.92); }
 .p-btn-sec { 
-    background: rgba(255,255,255,0.15); border: none; width: 48px; height: 48px; border-radius: 50%;
-    color: white; display: flex; align-items: center; justify-content: center; cursor: pointer;
-    transition: all 0.2s ease;
+    background: rgba(255,255,255,0.15); border: none; color: #fff; 
+    width: 44px; height: 44px; border-radius: 50%; 
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
-.p-btn-sec:active { background: rgba(255,255,255,0.25); transform: scale(0.92); }
+
+/* 处于空状态时，控制按钮整体变灰且不可点击 */
+.mini-player.is-empty .mini-controls {
+    filter: grayscale(1);
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* 抖动动画提示 */
+@keyframes miniShake {
+    0% { transform: translateX(-50%); }
+    25% { transform: translateX(-52%); }
+    50% { transform: translateX(-48%); }
+    75% { transform: translateX(-51%); }
+    100% { transform: translateX(-50%); }
+}
+
+.mini-shake {
+    animation: miniShake 0.3s ease-in-out;
+}
