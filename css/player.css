@@ -24,8 +24,6 @@
 
     z-index: 1000;
     display: flex; flex-direction: column; overflow: hidden; cursor: pointer;
-    /* 确保 transition 包含 transform 以维持点击缩放的丝滑 */
-    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 /* 修复点击动效：必须带上 translateX(-50%)，否则组件会左偏 */
