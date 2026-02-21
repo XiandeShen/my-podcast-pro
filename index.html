@@ -35,6 +35,23 @@
             height: 100%;
             box-sizing: border-box;
         }
+        /* 新增指示条样式 */
+        .modal-handle {
+            width: 100%;
+            height: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .modal-handle::after {
+            content: "";
+            width: 36px;
+            height: 5px;
+            background-color: rgba(0, 0, 0, 0.15);
+            border-radius: 3px;
+        }
     </style>
 </head>
 <body>
@@ -100,7 +117,7 @@
 
     <div id="episodeModalOverlay" class="modal-overlay" onclick="window.closeModal()">
         <div class="episode-modal" onclick="event.stopPropagation()">
-            <button class="modal-close-x" onclick="window.closeModal()">&times;</button>
+            <div class="modal-handle" onclick="window.closeModal()"></div>
             <div id="modalScrollArea" class="modal-content">
                 <div class="modal-hero">
                     <img id="modalBigCover" class="modal-big-cover" src="">
@@ -221,7 +238,6 @@
             document.getElementById('modalPodAuthor').innerText = p.author;
             desc.innerText = p.description || "暂无简介";
             
-            // 重置展开状态
             desc.classList.remove('is-expanded');
             toggleBtn.innerText = "展开全文";
             
@@ -229,8 +245,6 @@
             scrollArea.scrollTop = 0;
             modalOverlay.style.display = 'flex'; 
 
-            // 核心修改：检测文本是否溢出以决定是否显示按钮
-            // 需要在渲染后的下一帧执行，确保元素已有高度
             requestAnimationFrame(() => {
                 if (desc.scrollHeight > desc.clientHeight) {
                     toggleBtn.style.display = 'block';
