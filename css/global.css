@@ -13,7 +13,6 @@
     -webkit-touch-callout: none;
 }
 
-/* 核心优化：全量隐藏丑陋的系统滚动条，提升 App 感 */
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; -ms-overflow-style: none; }
 
@@ -88,11 +87,6 @@ body {
     transition: all 0.3s ease;
 }
 
-body.edit-mode #editBtn {
-    color: var(--danger);
-    border-color: var(--danger);
-}
-
 .content { 
     flex: 1; 
     overflow-y: auto; 
@@ -117,7 +111,12 @@ body.edit-mode #editBtn {
     }
 }
 
-.podcast-card { position: relative; cursor: pointer; transition: 0.4s cubic-bezier(0.2, 1, 0.2, 1); }
+.podcast-card { 
+    position: relative; 
+    cursor: pointer; 
+    transition: 0.4s cubic-bezier(0.2, 1, 0.2, 1);
+    touch-action: manipulation; /* 优化触摸体验 */
+}
 .podcast-card::before {
     content: ""; display: block; aspect-ratio: 1/1;
     background-image: var(--card-cover); background-size: cover; background-position: center;
@@ -165,22 +164,21 @@ body.edit-mode #editBtn {
 .ep-list-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ep-list-meta { font-size: 10px; color: var(--accent); margin-top: 2px; font-weight: 700; }
 
-/* 核心修改：进度条彻底隐身 + 激光发光 */
 .mini-progress-bar { 
     width: 100%; 
     height: 2px; 
-    background: transparent !important; /* 强制背景透明，不留任何痕迹 */
+    background: transparent !important;
     position: absolute; 
     bottom: 0; 
     left: 0; 
-    box-shadow: none !important; /* 移除可能产生的阴影阴影 */
+    box-shadow: none !important;
 }
 .mini-progress-fill { 
     height: 100%; 
     background: var(--accent); 
     width: 0%; 
     transition: width 0.1s linear; 
-    box-shadow: 0 0 12px var(--accent); /* 激光发光效果 */
+    box-shadow: 0 0 12px var(--accent);
 }
 
 .delete-badge {
