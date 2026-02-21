@@ -24,48 +24,28 @@ export const PlayerCore = {
                 .catch(error => console.error("Playback Error:", error));
         }
 
-        // 元数据加载后立即同步一次位置
-        this.audio.onloadedmetadata = () => {
-            this._syncMediaPosition();
-        };
-
-        // 时间更新时同步 UI 和系统组件位置
+        // 仅保留 UI 时间更新，移除所有 MediaSession 相关代码
         this.audio.ontimeupdate = () => {
             const cur = this.audio.currentTime;
             const dur = this.audio.duration;
             if (this._onTimeUpdate) {
                 this._onTimeUpdate((cur / dur) * 100 || 0, this.format(cur), this.format(dur));
             }
-            this._syncMediaPosition();
         };
+
+        // 其他事件无需处理
+        this.audio.onloadedmetadata = null;
+        this.audio.onplay = null;
+        this.audio.onpause = null;
+        this.audio.onseeked = null;
+        this.audio.onratechange = null;
+        this.audio.onended = null;
     },
 
-    // 仅同步 MediaSession 位置，不设置元数据
-    _syncMediaPosition() {
-        if (!('mediaSession' in navigator)) return;
-
-        const dur = this.audio.duration;
-        const cur = this.audio.currentTime;
-
-        if (dur && Number.isFinite(dur) && dur > 0 && Number.isFinite(cur)) {
-            try {
-                navigator.mediaSession.setPositionState({
-                    duration: dur,
-                    playbackPosition: Math.max(0, cur),
-                    playbackRate: this.audio.playbackRate || 1.0
-                });
-            } catch (error) {
-                // 忽略错误，避免干扰
-            }
-        }
-    },
-
-    // 空方法，避免外部调用报错
+    // 所有 MediaSession 相关方法置空
     updateMetadata(title, artist, cover) {},
 
-    updateMediaSessionState() {
-        this._syncMediaPosition();
-    },
+    updateMediaSessionState() {},
 
     onTimeUpdate(cb) {
         this._onTimeUpdate = cb;
