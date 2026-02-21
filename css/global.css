@@ -99,29 +99,32 @@ body.edit-mode #editBtn {
 .content { 
     flex: 1; 
     overflow-y: auto; 
-    padding-top: calc(80px + env(safe-area-inset-top) + 20px) !important;
+    padding-top: 10px;
     padding-left: 24px;
     padding-right: 24px;
-    padding-bottom: calc(120px + env(safe-area-inset-bottom));
     display: grid; 
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); 
-    /* 核心修改：确保即使内容为空，容器也撑开，且内容从顶部开始对齐 */
+    /* 核心修改：确保即便为空，也能顶对齐，并自动填充行高 */
     grid-template-rows: min-content;
     align-content: start;
-    min-height: 100%;
     gap: 24px;
     background: transparent !important;
 }
 
 @media (min-width: 768px) {
     .content {
-        padding-top: calc(80px + 40px) !important;
         padding-left: 48px;
         padding-right: 48px;
-        padding-bottom: 160px;
         grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
         gap: 32px;
     }
+}
+
+/* 底部避让占位符 */
+.grid-footer-spacer {
+    grid-column: 1 / -1;
+    height: 70px; /* 给播放器留出足够的避让空间 */
+    pointer-events: none;
 }
 
 .podcast-card { 
