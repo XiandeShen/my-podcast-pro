@@ -7,269 +7,127 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><defs><linearGradient id='podGradient' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%23AF52FF;stop-opacity:1' /><stop offset='100%' style='stop-color:%235C5CFF;stop-opacity:1' /></linearGradient></defs><rect width='200' height='200' rx='45' fill='url(%23podGradient)'/><g fill='white'><rect x='55' y='85' width='12' height='30' rx='6' opacity='0.6'/><rect x='75' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='95' y='55' width='12' height='90' rx='6'/><rect x='115' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='135' y='85' width='12' height='30' rx='6' opacity='0.6'/></g></svg>">
     <link rel="stylesheet" href="css/global.css">
     <link rel="stylesheet" href="css/player.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        /* 布局修正：确保 inline-header 独占一行且不遮挡内容 */
+        .inline-header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0 10px 0;
+            background: transparent;
+        }
+        .header-left .brand-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+        }
+        .brand-icon-pro { width: 32px; height: 32px; }
+        #brandTitle { font-size: 24px; font-weight: 800; margin: 0; }
+        .header-actions { display: flex; gap: 12px; }
+        
+        /* 修正 content 布局：确保内容始终从顶部开始，不居中 */
+        .content {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            align-content: start !important; /* 强制内容从顶部开始排列 */
+            gap: 24px;
+            padding-top: 10px !important;
+            padding-bottom: 120px !important;
+            height: 100%;
+            box-sizing: border-box;
+        }
+    </style>
 </head>
 <body>
-
     <div class="app-container">
-        <div class="main-layout">
-            <header class="header">
-                <div class="header-content">
+        <section class="main-layout" id="scrollContainer">
+            <main class="content" id="mainGrid">
+                <div class="inline-header" id="headerAnchor">
                     <div class="header-left">
-                        <div class="brand-wrapper" onclick="window.scrollTo({top:0, behavior:'smooth'})">
-                            <div class="brand-icon-pro"></div>
-                            <h1 id="brandTitle">Podcasts</h1>
+                        <div class="brand-wrapper" onclick="location.reload()">
+                            <div class="brand-icon-pro">
+                                <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <linearGradient id="podGradientHeader" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#AF52FF;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#5C5CFF;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                    <rect width="200" height="200" rx="45" fill="url(#podGradientHeader)"/>
+                                    <g fill="white">
+                                        <rect x="55" y="85" width="12" height="30" rx="6" opacity="0.6"/>
+                                        <rect x="75" y="70" width="12" height="60" rx="6" opacity="0.8"/>
+                                        <rect x="95" y="55" width="12" height="90" rx="6"/>
+                                        <rect x="115" y="70" width="12" height="60" rx="6" opacity="0.8"/>
+                                        <rect x="135" y="85" width="12" height="30" rx="6" opacity="0.6"/>
+                                    </g>
+                                </svg>
+                            </div>
+                            <h1 id="brandTitle">PODCAST</h1>
                         </div>
                     </div>
                     <div class="header-actions">
-                        <button class="action-btn" onclick="document.getElementById('rssFileInput').click()"><i class="bi bi-plus-lg"></i></button>
-                        <button class="action-btn" onclick="toggleEditMode()"><i class="bi bi-pencil-square"></i></button>
+                        <button class="action-btn" id="editBtn" title="管理资料库">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        </button>
+                        <label class="action-btn" for="rssFileInput" style="cursor: pointer;">
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <input type="file" id="rssFileInput" accept=".rss,.xml" multiple style="display:none">
+                        </label>
                     </div>
                 </div>
-            </header>
-
-            <main class="content" id="podcastGrid">
                 </main>
-        </div>
-    </div>
 
-    <input type="file" id="rssFileInput" accept=".xml,.rss" style="display:none">
-
-    <div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
-        <div class="episode-modal" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h3 id="modalPodcastTitle">剧集列表</h3>
-                <button class="modal-close-x" onclick="closeModal()">&times;</button>
-            </div>
-            <div class="modal-content" id="episodeList"></div>
-        </div>
-    </div>
-
-    <div id="playerContainer"></div>
-
-    <script type="module">
-        import { fetchAndParseRSS } from './js/rss-parser.js';
-        import { UI } from './js/ui-controller.js';
-        import { PlayerCore } from './js/player-core.js';
-
-        let allPodcastsData = JSON.parse(localStorage.getItem('podcast_db') || '[]');
-
-        // 渲染播放器 HTML (带上你要求的抖动逻辑)
-        document.getElementById('playerContainer').innerHTML = `
-            <div class="mini-player is-empty" id="miniPlayer" onclick="handleMiniPlayerClick()">
+            <footer class="mini-player is-empty" id="miniPlayer" onclick="window.expandPlayer()">
                 <div class="mini-player-content">
                     <div class="mini-info">
-                        <img src="https://via.placeholder.com/64" id="miniCover">
+                        <img id="miniCover" src="data:image/svg+xml,<svg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><defs><linearGradient id='podGradient' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%23AF52FF;stop-opacity:1' /><stop offset='100%' style='stop-color:%235C5CFF;stop-opacity:1' /></linearGradient></defs><rect width='200' height='200' rx='0' fill='url(%23podGradient)'/><g fill='white'><rect x='55' y='85' width='12' height='30' rx='6' opacity='0.6'/><rect x='75' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='95' y='55' width='12' height='90' rx='6'/><rect x='115' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='135' y='85' width='12' height='30' rx='6' opacity='0.6'/></g></svg>">
                         <div class="mini-text">
-                            <span id="miniTitle">未在播放</span>
-                            <span id="miniAuthor">选择剧集开始收听</span>
+                            <div id="miniTitle">请选择节目</div>
+                            <div id="miniAuthor">PODCAST</div>
                         </div>
                     </div>
                     <div class="mini-controls">
-                        <button class="mini-play-btn" onclick="event.stopPropagation(); togglePlay()">
-                            <i class="bi bi-play-fill" style="font-size: 28px;"></i>
+                        <button class="mini-play-btn" id="miniPlayBtn" onclick="event.stopPropagation(); window.handleToggle()">
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                         </button>
+                        <button class="mini-speed-btn-text" id="miniSpeedBtn" onclick="event.stopPropagation(); window.toggleSpeed()">1.0x</button>
                     </div>
                 </div>
-                <div class="mini-progress-bar">
-                    <div class="mini-progress-fill" id="miniProgressFill"></div>
-                </div>
+                <div class="mini-progress-bar"><div class="mini-progress-fill" id="miniProgressFill"></div></div>
+            </footer>
+        </section>
+    </div>
+
+    <div id="episodeModalOverlay" class="modal-overlay" onclick="window.closeModal()">
+        <div class="episode-modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="modalPodTitle">播客节目</h3>
+                <button class="modal-close-x" onclick="window.closeModal()">&times;</button>
             </div>
+            <div id="modalEpisodeList" class="modal-content"></div>
+        </div>
+    </div>
 
-            <div class="p-overlay" id="playerOverlay">
-                <div class="p-dynamic-bg" id="pDynamicBg"></div>
-                <div class="p-header-nav">
-                    <button class="p-close-btn" onclick="closePlayer()"><i class="bi bi-chevron-down"></i></button>
+    <div id="playerOverlay" class="p-overlay">
+        <div id="dynamicBg" class="p-dynamic-bg"></div>
+        <div class="p-header-nav">
+            <button class="p-close-btn" onclick="window.closePlayer()">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+        </div>
+        <div class="p-main-content">
+            <div class="p-cover-wrap"><img id="playerCover" src=""></div>
+            <div class="p-controls-area">
+                <div class="p-info">
+                    <div class="p-info-text"><h2 id="playerTitle">未播放</h2><p id="playerAuthor">作者</p></div>
+                    <button class="p-speed-btn" id="fullSpeedBtn" onclick="window.toggleSpeed()">1.0x</button>
                 </div>
-                <div class="p-main-content">
-                    <div class="p-cover-wrap">
-                        <img src="" id="playerCover">
-                    </div>
-                    <div class="p-controls-area">
-                        <div class="p-info">
-                            <div class="p-info-text">
-                                <h2 id="playerTitle">未在播放</h2>
-                                <p id="playerAuthor">歌手/播客</p>
-                            </div>
-                            <button class="p-speed-btn" onclick="toggleSpeed(this)">1.0x</button>
-                        </div>
-                        <div class="p-progress-wrap">
-                            <input type="range" class="p-slider" id="progressRange" value="0" step="0.1">
-                            <div class="p-time-info">
-                                <span id="currentTime">0:00</span>
-                                <span id="durationTime">0:00</span>
-                            </div>
-                        </div>
-                        <div class="p-controls">
-                            <button class="p-btn-sec" onclick="seekOffset(-15)"><i class="bi bi-arrow-counterclockwise"></i></button>
-                            <button class="p-btn-play-large" id="mainPlayBtn" onclick="togglePlay()"><i class="bi bi-play-fill" style="font-size: 32px;"></i></button>
-                            <button class="p-btn-sec" onclick="seekOffset(15)"><i class="bi bi-arrow-clockwise"></i></button>
-                        </div>
-                    </div>
+                <div class="p-progress-wrap">
+                    <input type="range" class="p-slider" value="0" id="progressRange">
+                    <div class="p-time-info"><span id="currentTime">0:00</span><span id="durationTime">0:00</span></div>
                 </div>
-            </div>
-        `;
-
-        window.toggleEditMode = function() {
-            document.body.classList.toggle('edit-mode');
-        };
-
-        window.closeModal = function() {
-            document.getElementById('modalOverlay').style.display = 'none';
-        };
-
-        window.handleMiniPlayerClick = function() {
-            const mini = document.getElementById('miniPlayer');
-            if (mini.classList.contains('is-empty')) {
-                // 保留：空状态下的抖动反馈
-                mini.classList.add('mini-shake');
-                setTimeout(() => mini.classList.remove('mini-shake'), 300);
-            } else {
-                document.getElementById('playerOverlay').classList.add('is-active');
-            }
-        };
-
-        window.closePlayer = function() {
-            document.getElementById('playerOverlay').classList.remove('is-active');
-        };
-
-        window.togglePlay = function() {
-            const isPlaying = PlayerCore.toggle();
-            updatePlayIcons(isPlaying);
-        };
-
-        window.updatePlayIcons = function(isPlaying) {
-            const icons = [
-                document.querySelector('.mini-play-btn i'),
-                document.querySelector('#mainPlayBtn i')
-            ];
-            icons.forEach(icon => {
-                if(icon) icon.className = isPlaying ? 'bi bi-pause-fill' : 'bi bi-play-fill';
-            });
-        };
-
-        window.seekOffset = function(sec) {
-            PlayerCore.audio.currentTime += sec;
-        };
-
-        window.toggleSpeed = function(btn) {
-            const rates = [1, 1.25, 1.5, 2];
-            let cur = PlayerCore.audio.playbackRate;
-            let next = rates[(rates.indexOf(cur) + 1) % rates.length];
-            PlayerCore.audio.playbackRate = next;
-            btn.innerText = next + 'x';
-        };
-
-        async function handleFileUpload(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-                const data = await fetchAndParseRSS(URL.createObjectURL(new Blob([event.target.result])));
-                if (data) {
-                    allPodcastsData.push(data);
-                    localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
-                    renderPodcastList();
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        function renderPodcastList() {
-            const grid = document.getElementById('podcastGrid');
-            grid.innerHTML = '';
-            allPodcastsData.forEach((p, i) => {
-                const card = document.createElement('div');
-                card.className = 'podcast-card';
-                card.style.setProperty('--card-cover', `url(${p.image})`);
-                card.innerHTML = `
-                    <div class="delete-badge"><i class="bi bi-x"></i></div>
-                    <div class="card-info">
-                        <h3>${p.title}</h3>
-                        <p>${p.author}</p>
-                    </div>
-                `;
-                
-                card.onclick = () => {
-                    if (document.body.classList.contains('edit-mode')) {
-                        // 退出编辑模式
-                        document.body.classList.remove('edit-mode');
-                        return;
-                    }
-                    showEpisodes(p);
-                };
-
-                card.querySelector('.delete-badge').onclick = (e) => {
-                    e.stopPropagation();
-                    allPodcastsData.splice(i, 1);
-                    localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
-                    renderPodcastList();
-                };
-                grid.appendChild(card);
-            });
-        }
-
-        function showEpisodes(podcast) {
-            const list = document.getElementById('episodeList');
-            document.getElementById('modalPodcastTitle').innerText = podcast.title;
-            list.innerHTML = '';
-            podcast.episodes.forEach(ep => {
-                const item = document.createElement('div');
-                item.className = 'episode-list-item';
-                item.innerHTML = `
-                    <img src="${ep.image || podcast.image}" class="ep-list-cover">
-                    <div class="ep-list-info">
-                        <div class="ep-list-title">${ep.title}</div>
-                        <div class="ep-list-meta">NEW EPISODE</div>
-                    </div>
-                `;
-                item.onclick = () => {
-                    startPlay(ep, podcast);
-                    closeModal();
-                };
-                list.appendChild(item);
-            });
-            document.getElementById('modalOverlay').style.display = 'flex';
-        }
-
-        function startPlay(episode, podcast) {
-            const mini = document.getElementById('miniPlayer');
-            mini.classList.remove('is-empty');
-            
-            document.getElementById('miniTitle').innerText = episode.title;
-            document.getElementById('miniAuthor').innerText = podcast.title;
-            document.getElementById('miniCover').src = episode.image || podcast.image;
-            
-            document.getElementById('playerTitle').innerText = episode.title;
-            document.getElementById('playerAuthor').innerText = podcast.title;
-            document.getElementById('playerCover').src = episode.image || podcast.image;
-            document.getElementById('pDynamicBg').style.backgroundImage = `url(${episode.image || podcast.image})`;
-
-            PlayerCore.play(episode.audioUrl);
-            PlayerCore.updateMetadata(episode.title, podcast.title, episode.image || podcast.image);
-            updatePlayIcons(true);
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            renderPodcastList();
-            document.getElementById('rssFileInput').onchange = handleFileUpload;
-
-            PlayerCore.onTimeUpdate((pct, cur, tot) => {
-                const f = document.getElementById('miniProgressFill');
-                if(f) f.style.width = pct + '%';
-                const pr = document.getElementById('progressRange');
-                if(pr) pr.value = pct;
-                const ct = document.getElementById('currentTime');
-                if(ct) ct.innerText = cur;
-                const dt = document.getElementById('durationTime');
-                if(dt) dt.innerText = tot;
-            });
-
-            PlayerCore.audio.onended = () => updatePlayIcons(false);
-            
-            // 解决移动端 hover 残留的关键 JS：在触摸结束后移除 hover 效果
-            document.addEventListener('touchstart', function(){}, true);
-        });
-    </script>
-</body>
-</html>
+                <div class="p-controls">
+                    <button class="p-btn-sec" onclick="window.seekOffset(-15)"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2.5 2v6h6M2.66 15.57a10 10 0 1 0 .57-8.38"/><text x="12" y="15.5" font-size="7" font-weight="900" text-anchor="middle" fill="currentColor" stroke="none">15</
