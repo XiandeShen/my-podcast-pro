@@ -1,14 +1,21 @@
 // js/player-core.js
 
-// 核心突破点：创建 audio 元素并必须将其塞入 DOM 树中
-// 这是解决安卓/iOS系统组件“时间归零”、“进度不同步”的终极物理方案
-const sysAudio = new Audio();
-sysAudio.id = "core-audio-player";
-sysAudio.style.display = "none";
-document.body.appendChild(sysAudio);
+// 核心突破点：直接绑定 DOM 实体元素，解决三星系统组件归零问题
+const getAudioElement = () => {
+    let el = document.getElementById('main-audio-player');
+    if (!el) {
+        // 防御性处理：如果 index.html 没写，脚本自动创建一个并挂载
+        el = document.createElement('audio');
+        el.id = 'main-audio-player';
+        el.style.display = 'none';
+        document.body.appendChild(el);
+    }
+    return el;
+};
+
+const sysAudio = getAudioElement();
 
 export const PlayerCore = {
-    // 绑定挂载到 DOM 的实体元素
     audio: sysAudio,
     _onTimeUpdate: null,
 
@@ -25,14 +32,16 @@ export const PlayerCore = {
             }).catch(error => console.error("Playback Error:", error));
         }
 
-        // 统一交给浏览器原生事件去驱动系统组件
+        // 统一交给浏览器原生事件驱动系统组件
         this.audio.onloadedmetadata = () => this.updateMediaSessionState();
         
         this.audio.ontimeupdate = () => {
             const cur = this.audio.currentTime;
             const dur = this.audio.duration;
             if (this._onTimeUpdate) {
-                this._onTimeUpdate((cur / dur) * 100 || 0, this.format(cur), this.format(dur));
+                // 确保传递给网页 UI 的数据也是安全的
+                const safePct = (cur / dur) * 100 || 0;
+                this._onTimeUpdate(safePct, this.format(cur), this.format(dur));
             }
         };
 
@@ -43,24 +52,23 @@ export const PlayerCore = {
         this.audio.onratechange = () => this.updateMediaSessionState();
     },
 
-    // 纯粹的同步函数
+    // 纯粹的同步函数：强制执行“原子化”同步
     updateMediaSessionState() {
         if (!('mediaSession' in navigator)) return;
 
-        // 同步播放状态
+        // 1. 同步播放状态
         navigator.mediaSession.playbackState = this.audio.paused ? "paused" : "playing";
 
         const dur = this.audio.duration;
         const cur = this.audio.currentTime;
 
-        // 核心保护：很多播客 RSS 返回的时长最初可能是 Infinity 或 NaN
-        // 如果把这些非法值传给三星系统，系统组件就会崩溃并归零。
-        // 所以必须用 Number.isFinite 确保是正常的数字
+        // 2. 只有在有明确、有限数值的时长时才上报给系统
+        // 使用 Number.isFinite 过滤 Infinity（流媒体常见问题）
         if (dur && Number.isFinite(dur) && dur > 0 && Number.isFinite(cur)) {
             try {
                 navigator.mediaSession.setPositionState({
                     duration: dur,
-                    playbackPosition: cur,
+                    playbackPosition: Math.max(0, Math.min(cur, dur - 0.1)),
                     playbackRate: this.audio.playbackRate || 1.0
                 });
             } catch (error) {
@@ -78,11 +86,12 @@ export const PlayerCore = {
                     { src: cover, sizes: '96x96' },
                     { src: cover, sizes: '128x128' },
                     { src: cover, sizes: '256x256' },
+                    { src: cover, sizes: '384x384' },
                     { src: cover, sizes: '512x512' }
                 ]
             });
 
-            // 所有的控制均只操作 DOM 元素，由 DOM 元素的 onplay/onpause 事件自动回调去同步系统
+            // 锁屏控制：直接操作实体 DOM 元素，让上面的事件监听器自动处理同步
             navigator.mediaSession.setActionHandler('play', () => { this.audio.play(); });
             navigator.mediaSession.setActionHandler('pause', () => { this.audio.pause(); });
             navigator.mediaSession.setActionHandler('seekbackward', () => {
@@ -102,8 +111,13 @@ export const PlayerCore = {
     onTimeUpdate(cb) { this._onTimeUpdate = cb; },
 
     toggle() {
-        if (this.audio.paused) { this.audio.play(); return true; }
-        else { this.audio.pause(); return false; }
+        if (this.audio.paused) { 
+            this.audio.play(); 
+            return true; 
+        } else { 
+            this.audio.pause(); 
+            return false; 
+        }
     },
 
     seek(pct) {
