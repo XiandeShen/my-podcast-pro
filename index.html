@@ -72,8 +72,6 @@
     </style>
 </head>
 <body>
-    <audio id="main-audio-player" preload="metadata" style="display: none;"></audio>
-
     <div class="app-container">
         <section class="main-layout" id="scrollContainer">
             <main class="content" id="mainGrid">
@@ -215,7 +213,6 @@
         const speeds = [1.0, 1.25, 1.5, 2.0];
         let currentSpeedIndex = 0;
         let currentPlayingIdx = { pod: -1, ep: -1 };
-        window.isDraggingRange = false; // 用于阻止拖动时进度条回弹
 
         // 菜单切换逻辑
         const moreMenu = document.getElementById('moreMenu');
@@ -296,7 +293,7 @@
         };
 
         window.seekOffset = (s) => {
-            PlayerCore.seekOffset(s);
+            if(PlayerCore.audio.duration) PlayerCore.audio.currentTime = Math.max(0, Math.min(PlayerCore.audio.currentTime+s, PlayerCore.audio.duration));
         };
 
         window.updatePlayIcons = (isPlaying) => {
@@ -487,38 +484,24 @@
             const editBtn = document.getElementById('editBtn');
             if(editBtn) editBtn.onclick = (e) => { e.stopPropagation(); document.body.classList.toggle('edit-mode'); };
 
-            // 进度条交互保护
             const range = document.getElementById('progressRange');
-            if(range) {
-                range.addEventListener('touchstart', () => window.isDraggingRange = true);
-                range.addEventListener('touchend', () => window.isDraggingRange = false);
-                range.addEventListener('mousedown', () => window.isDraggingRange = true);
-                range.addEventListener('mouseup', () => window.isDraggingRange = false);
-                
-                range.oninput = (e) => {
-                    const targetTime = (e.target.value / 100) * PlayerCore.audio.duration;
-                    const ct = document.getElementById('currentTime');
-                    if(ct) ct.innerText = PlayerCore.format(targetTime);
-                };
-                range.onchange = (e) => {
-                    PlayerCore.seek(e.target.value);
-                };
-            }
+            if(range) range.oninput = (e) => PlayerCore.seek(e.target.value);
 
             PlayerCore.onTimeUpdate((pct, cur, tot) => {
                 const f = document.getElementById('miniProgressFill');
                 if(f) f.style.width = pct + '%';
                 const pr = document.getElementById('progressRange');
-                if(pr && !window.isDraggingRange) pr.value = pct;
+                if(pr) pr.value = pct;
                 const ct = document.getElementById('currentTime');
-                if(ct && !window.isDraggingRange) ct.innerText = cur;
+                if(ct) ct.innerText = cur;
                 const dt = document.getElementById('durationTime');
                 if(dt) dt.innerText = tot;
             });
 
+            // 修改：在播放结束时也更新 MediaSession
             PlayerCore.audio.onended = () => {
                 window.updatePlayIcons(false);
-                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "none";
+                PlayerCore.updateMediaSessionState(); // 新增：同步系统状态
             };
         });
     </script>
