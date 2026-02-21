@@ -12,12 +12,12 @@ export const PlayerCore = {
         if (playPromise !== undefined) {
             playPromise.then(() => {
                 this.audio.playbackRate = currentRate;
-                this.updateSystemSession("playing");
+                this.syncAll("playing");
             }).catch(error => console.error("Playback Error:", error));
         }
 
         this.audio.onloadedmetadata = () => {
-            this.updateSystemSession();
+            this.syncAll();
         };
 
         this.audio.ontimeupdate = () => {
@@ -26,37 +26,29 @@ export const PlayerCore = {
             if (this._onTimeUpdate) {
                 this._onTimeUpdate((cur / dur) * 100 || 0, this.format(cur), this.format(dur));
             }
-            // 苹果策略：正常播放中，绝不主动调用 setPositionState，让系统自行预测计时
+            // 重点：正常播放中，绝不调用 setPositionState，让三星系统自己走
         };
 
-        // 核心修复：监听跳转事件
-        // 当跳转发生时，我们需要执行一个“彻底重置”操作
-        this.audio.onseeking = () => {
-            // 跳转中，先告诉系统我们停了，防止系统计时器继续往前跑导致偏差
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.playbackState = "paused";
-            }
-        };
-
+        // 核心修复：当音频因为任何原因（包括手动点击、系统操作）暂停或播放时
+        this.audio.onplay = () => this.syncAll("playing");
+        this.audio.onpause = () => this.syncAll("paused");
+        
+        // 跳转完成时
         this.audio.onseeked = () => {
-            // 跳转结束，强制重新同步
-            // 增加 20ms 延迟是为了确保安卓底层音频驱动已经完成了 buffer 的更新
-            setTimeout(() => {
-                this.updateSystemSession(this.audio.paused ? "paused" : "playing");
-            }, 20);
+            this.syncAll(this.audio.paused ? "paused" : "playing");
         };
-
-        this.audio.onplay = () => this.updateSystemSession("playing");
-        this.audio.onpause = () => this.updateSystemSession("paused");
     },
 
     /**
-     * 终极同步方案
-     * 针对三星系统：每次同步都重新设置完整的状态包，并强制触发系统的 UI 刷新
+     * 终极同步方案：syncAll
+     * 针对三星系统暂停归零的修复策略：
+     * 1. 强制将 playbackState 和 positionState 在同一个执行周期内发出
+     * 2. 暂停时，明确告诉系统“停留在这一秒”，不给系统自动归零的机会
      */
-    updateSystemSession(state = null) {
+    syncAll(state = null) {
         if (!('mediaSession' in navigator)) return;
 
+        // 1. 设置状态
         if (state) {
             navigator.mediaSession.playbackState = state;
         }
@@ -64,19 +56,20 @@ export const PlayerCore = {
         const dur = this.audio.duration;
         const cur = this.audio.currentTime;
 
+        // 2. 只有在有有效时长时才同步
         if (dur && !isNaN(dur) && dur > 0) {
             try {
-                // 苹果式精准同步：
-                // 1. 确保位置不溢出
-                // 2. 必须显式传递 playbackRate，即使它是 1.0
-                // 3. 使用 Math.floor 减少浮点数传递，防止系统精度计算导致的归零
+                // 苹果式防御：确保不等于总长度，确保不为负数
+                const safePos = Math.max(0, Math.min(cur, dur - 0.2));
+                
+                // 核心：setPositionState 必须在此时刻被调用
                 navigator.mediaSession.setPositionState({
                     duration: dur,
-                    playbackPosition: Math.min(cur, dur - 0.1),
+                    playbackPosition: safePos,
                     playbackRate: this.audio.playbackRate || 1.0
                 });
             } catch (e) {
-                console.warn("MediaSession update error:", e);
+                console.warn("MediaSession Sync Failed:", e);
             }
         }
     },
@@ -95,11 +88,10 @@ export const PlayerCore = {
                 ]
             });
 
-            // 注册系统 Action 控制
+            // 控制回调：仅处理逻辑，不直接操作 MediaSession 状态，由 audio 事件统一触发 syncAll
             navigator.mediaSession.setActionHandler('play', () => { this.audio.play(); });
             navigator.mediaSession.setActionHandler('pause', () => { this.audio.pause(); });
             
-            // 系统组件内的跳转：同样依赖 audio 对象的事件回调进行同步
             navigator.mediaSession.setActionHandler('seekbackward', () => {
                 this.audio.currentTime = Math.max(0, this.audio.currentTime - 15);
             });
@@ -124,7 +116,6 @@ export const PlayerCore = {
 
     seek(pct) {
         if (this.audio.duration) {
-            // 直接修改 currentTime，触发 onseeking 和 onseeked 逻辑
             this.audio.currentTime = (pct / 100) * this.audio.duration;
         }
     },
