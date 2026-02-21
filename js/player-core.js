@@ -1,14 +1,11 @@
 // js/player-core.js
 
-// 核心突破点：创建 audio 元素并必须将其塞入 DOM 树中
-// 这是解决安卓/iOS系统组件“时间归零”、“进度不同步”的终极物理方案
 const sysAudio = new Audio();
 sysAudio.id = "core-audio-player";
 sysAudio.style.display = "none";
 document.body.appendChild(sysAudio);
 
 export const PlayerCore = {
-    // 绑定挂载到 DOM 的实体元素
     audio: sysAudio,
     _onTimeUpdate: null,
 
@@ -21,12 +18,11 @@ export const PlayerCore = {
         if (playPromise !== undefined) {
             playPromise.then(() => {
                 this.audio.playbackRate = currentRate;
-                this.updateMediaSessionState();
+                this._updateMediaSessionState();
             }).catch(error => console.error("Playback Error:", error));
         }
 
-        // 统一交给浏览器原生事件去驱动系统组件
-        this.audio.onloadedmetadata = () => this.updateMediaSessionState();
+        this.audio.onloadedmetadata = () => this._updateMediaSessionState();
         
         this.audio.ontimeupdate = () => {
             const cur = this.audio.currentTime;
@@ -34,41 +30,43 @@ export const PlayerCore = {
             if (this._onTimeUpdate) {
                 this._onTimeUpdate((cur / dur) * 100 || 0, this.format(cur), this.format(dur));
             }
-            // 新增：每次时间更新都同步到系统组件
-            this.updateMediaSessionState();
+            // 传入当前获取到的精确值，避免再次读取 this.audio.currentTime 可能导致的延迟
+            this._updateMediaSessionState(dur, cur);
         };
 
-        // 监听原生动作进行同步
-        this.audio.onplay = () => this.updateMediaSessionState();
-        this.audio.onpause = () => this.updateMediaSessionState();
-        this.audio.onseeked = () => this.updateMediaSessionState();
-        this.audio.onratechange = () => this.updateMediaSessionState();
+        this.audio.onplay = () => this._updateMediaSessionState();
+        this.audio.onpause = () => this._updateMediaSessionState();
+        this.audio.onseeked = () => this._updateMediaSessionState();
+        this.audio.onratechange = () => this._updateMediaSessionState();
     },
 
-    // 纯粹的同步函数
-    updateMediaSessionState() {
+    // 统一的 MediaSession 更新方法，可接收外部传入的 duration 和 currentTime
+    _updateMediaSessionState(dur, cur) {
         if (!('mediaSession' in navigator)) return;
 
-        // 同步播放状态
+        // 如果未传入，则从 audio 元素获取
+        const duration = (dur !== undefined) ? dur : this.audio.duration;
+        const current = (cur !== undefined) ? cur : this.audio.currentTime;
+
         navigator.mediaSession.playbackState = this.audio.paused ? "paused" : "playing";
 
-        const dur = this.audio.duration;
-        const cur = this.audio.currentTime;
-
-        // 核心保护：很多播客 RSS 返回的时长最初可能是 Infinity 或 NaN
-        // 如果把这些非法值传给三星系统，系统组件就会崩溃并归零。
-        // 所以必须用 Number.isFinite 确保是正常的数字
-        if (dur && Number.isFinite(dur) && dur > 0 && Number.isFinite(cur)) {
+        // 确保 duration 和 current 都是有限数字，且 duration > 0
+        if (duration && Number.isFinite(duration) && duration > 0 && Number.isFinite(current)) {
             try {
                 navigator.mediaSession.setPositionState({
-                    duration: dur,
-                    playbackPosition: cur,
+                    duration: duration,
+                    playbackPosition: current,
                     playbackRate: this.audio.playbackRate || 1.0
                 });
             } catch (error) {
                 console.warn("MediaSession API Error:", error);
             }
         }
+    },
+
+    // 对外公开的 updateMediaSessionState 方法，内部调用新方法
+    updateMediaSessionState() {
+        this._updateMediaSessionState();
     },
 
     updateMetadata(title, artist, cover) {
@@ -84,7 +82,6 @@ export const PlayerCore = {
                 ]
             });
 
-            // 所有的控制均只操作 DOM 元素，由 DOM 元素的 onplay/onpause 事件自动回调去同步系统
             navigator.mediaSession.setActionHandler('play', () => { this.audio.play(); });
             navigator.mediaSession.setActionHandler('pause', () => { this.audio.pause(); });
             navigator.mediaSession.setActionHandler('seekbackward', () => {
