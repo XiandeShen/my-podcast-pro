@@ -12,7 +12,6 @@ export const PlayerCore = {
         if (playPromise !== undefined) {
             playPromise.then(() => {
                 this.audio.playbackRate = currentRate;
-                // 初始播放同步
                 this.forceSystemSync("playing");
             }).catch(error => console.error("Playback Error:", error));
         }
@@ -29,23 +28,31 @@ export const PlayerCore = {
             const pct = (cur / dur) * 100 || 0;
             
             if (this._onTimeUpdate) this._onTimeUpdate(pct, currentStr, totalStr);
-            // 此时不再在 ontimeupdate 中同步，让系统组件自己走
+            // 正常播放期间完全交给系统自己走，不进行任何干预，防止竞争
         };
 
-        // 监听底层状态
+        // 核心修复：跳转状态的原子化同步
         this.audio.onplay = () => this.forceSystemSync("playing");
         this.audio.onpause = () => this.forceSystemSync("paused");
         
-        // 关键：跳转结束后的校准
+        // 当跳转完成时，采用“先停再播”的欺骗策略来强制校准三星系统
         this.audio.onseeked = () => {
-            this.forceSystemSync(this.audio.paused ? "paused" : "playing");
+            if ('mediaSession' in navigator) {
+                // 1. 瞬间声明暂停，清空系统组件的计时器预测
+                navigator.mediaSession.playbackState = "paused";
+                
+                // 2. 延迟 10 毫秒后再发送正确的位置和状态
+                setTimeout(() => {
+                    const isPaused = this.audio.paused;
+                    this.forceSystemSync(isPaused ? "paused" : "playing");
+                }, 10);
+            }
         };
     },
 
     /**
-     * 核心同步逻辑：解决跳转归零
-     * 采用苹果策略：在跳转时，如果系统出现混乱，
-     * 我们通过重新声明状态来“强行校准”系统计时器。
+     * 强力同步函数：
+     * 针对三星系统，确保每一次 positionState 更新都伴随着明确的速率声明
      */
     forceSystemSync(state = null) {
         if (!('mediaSession' in navigator)) return;
@@ -59,18 +66,17 @@ export const PlayerCore = {
 
         if (dur && !isNaN(dur) && dur > 0) {
             try {
-                // 1. 先进行极其微小的偏移，避免恰好在整数秒导致系统逻辑冲突
-                const safePos = Math.max(0, Math.min(cur, dur - 0.1));
+                // 边界保护：三星在接近结束时同步容易报错归零
+                const safePos = Math.max(0, Math.min(cur, dur - 0.2));
                 
-                // 2. 核心操作：重新设置位置状态
-                // 必须带上 playbackRate，否则系统会默认从 0 开始预测
                 navigator.mediaSession.setPositionState({
                     duration: dur,
                     playbackPosition: safePos,
                     playbackRate: this.audio.playbackRate || 1.0
                 });
             } catch (e) {
-                console.warn("MediaSession Sync Error:", e);
+                // 捕获可能由于音频未完全 Ready 导致的调用异常
+                console.warn("MediaSession PositionState error:", e);
             }
         }
     },
@@ -87,6 +93,7 @@ export const PlayerCore = {
                 ]
             });
 
+            // 系统回调处理
             navigator.mediaSession.setActionHandler('play', () => {
                 this.audio.play();
                 if(window.updatePlayIcons) window.updatePlayIcons(true);
@@ -95,22 +102,20 @@ export const PlayerCore = {
                 this.audio.pause();
                 if(window.updatePlayIcons) window.updatePlayIcons(false);
             });
+            
+            // 系统组件内的快进/快退，直接改变 currentTime 触发 onseeked
             navigator.mediaSession.setActionHandler('seekbackward', () => {
-                const target = Math.max(0, this.audio.currentTime - 15);
-                this.audio.currentTime = target;
-                this.forceSystemSync();
+                this.audio.currentTime = Math.max(0, this.audio.currentTime - 15);
             });
             navigator.mediaSession.setActionHandler('seekforward', () => {
-                const target = Math.min(this.audio.duration, this.audio.currentTime + 15);
-                this.audio.currentTime = target;
-                this.forceSystemSync();
+                this.audio.currentTime = Math.min(this.audio.duration, this.audio.currentTime + 15);
             });
+            
+            // 系统组件进度条拖动
             navigator.mediaSession.setActionHandler('seekto', (details) => {
                 if (details.seekTime !== undefined) {
-                    // 三星系统关键修复：跳转时必须先更新 audio 时间
                     this.audio.currentTime = details.seekTime;
-                    // 然后立即强刷一次系统状态，覆盖掉系统的自动清零行为
-                    this.forceSystemSync();
+                    // 跳转逻辑会由 onseeked 自动接管并同步
                 }
             });
         }
@@ -127,8 +132,7 @@ export const PlayerCore = {
         if (this.audio.duration) {
             const targetTime = (pct / 100) * this.audio.duration;
             this.audio.currentTime = targetTime;
-            // 网页端拖动时，同步给系统
-            this.forceSystemSync();
+            // 网页端操作同样会触发 onseeked
         }
     },
 
