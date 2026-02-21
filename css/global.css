@@ -105,6 +105,10 @@ body.edit-mode #editBtn {
     padding-bottom: calc(120px + env(safe-area-inset-bottom));
     display: grid; 
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); 
+    /* 核心修改：确保即使内容为空，容器也撑开，且内容从顶部开始对齐 */
+    grid-template-rows: min-content;
+    align-content: start;
+    min-height: 100%;
     gap: 24px;
     background: transparent !important;
 }
