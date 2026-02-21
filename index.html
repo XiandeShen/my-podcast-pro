@@ -28,10 +28,8 @@
         .brand-icon-pro { width: 32px; height: 32px; }
         #brandTitle { font-size: 24px; font-weight: 800; margin: 0; }
         
-        /* 菜单容器样式 */
         .header-actions { display: flex; gap: 8px; position: relative; }
         
-        /* 二级菜单样式 */
         .dropdown-menu {
             position: absolute;
             top: 45px;
@@ -216,7 +214,6 @@
         let currentSpeedIndex = 0;
         let currentPlayingIdx = { pod: -1, ep: -1 };
 
-        // 菜单切换逻辑
         const moreMenu = document.getElementById('moreMenu');
         const menuToggleBtn = document.getElementById('menuToggleBtn');
         
@@ -237,7 +234,6 @@
             handleExport();
         };
 
-        // 深色模式逻辑
         function updateThemeUI(isDark) {
             const icon = document.getElementById('themeIcon');
             const text = document.getElementById('themeText');
@@ -295,9 +291,7 @@
         };
 
         window.seekOffset = (s) => {
-            if(PlayerCore.audio.duration) {
-                PlayerCore.seekOffset(s);
-            }
+            PlayerCore.seekOffset(s);
         };
 
         window.updatePlayIcons = (isPlaying) => {
@@ -312,15 +306,11 @@
         window.toggleCurrentEpisodeDone = () => {
             const { pod, ep } = currentPlayingIdx;
             if(pod === -1 || ep === -1) return;
-            
             const episode = allPodcastsData[pod].episodes[ep];
             episode.isFinished = !episode.isFinished;
-            
             const btn = document.getElementById('markDoneBtn');
             btn.classList.toggle('is-active', episode.isFinished);
-            
             localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
-            
             if(document.getElementById('episodeModalOverlay').style.display === 'flex') {
                 window.renderEpisodeList(pod);
             }
@@ -349,9 +339,7 @@
                     document.getElementById('playerTitle').innerText = ep.title;
                     document.getElementById('playerAuthor').innerText = p.title;
                     document.getElementById('dynamicBg').style.backgroundImage = `url('${cover}')`;
-                    
                     document.getElementById('markDoneBtn').classList.toggle('is-active', !!ep.isFinished);
-                    
                     PlayerCore.updateMetadata(ep.title, p.title, cover);
                     PlayerCore.play(ep.audioUrl);
                     PlayerCore.audio.playbackRate = speeds[currentSpeedIndex];
@@ -374,7 +362,6 @@
             for (const file of files) {
                 try {
                     const text = await file.text();
-                    
                     if (file.name.toLowerCase().endsWith('.json')) {
                         const backupData = JSON.parse(text);
                         if (Array.isArray(backupData)) {
@@ -392,7 +379,6 @@
                         }
                         continue;
                     }
-
                     const dom = new DOMParser().parseFromString(text, "text/xml");
                     const channel = dom.querySelector("channel");
                     if (!channel) continue;
@@ -421,10 +407,7 @@
         }
 
         function handleExport() {
-            if (allPodcastsData.length === 0) {
-                alert("资料库为空，无需导出");
-                return;
-            }
+            if (allPodcastsData.length === 0) return;
             const blob = new Blob([JSON.stringify(allPodcastsData, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -437,17 +420,13 @@
         function renderPodcastList() {
             const grid = document.getElementById('mainGrid');
             if(!grid) return;
-            
             const itemsToRemove = grid.querySelectorAll('.podcast-card, .grid-footer-spacer');
             itemsToRemove.forEach(c => c.remove());
-
             allPodcastsData.forEach((p, i) => {
                 const card = document.createElement('div');
                 card.className = 'podcast-card';
                 card.style.setProperty('--card-cover', `url('${p.image}')`);
-                card.onclick = () => { 
-                    if(!document.body.classList.contains('edit-mode')) window.renderEpisodeList(i); 
-                };
+                card.onclick = () => { if(!document.body.classList.contains('edit-mode')) window.renderEpisodeList(i); };
                 card.innerHTML = `
                     <div class="card-inner">
                         <div class="card-info">
@@ -469,7 +448,6 @@
                 };
                 grid.appendChild(card);
             });
-
             const spacer = document.createElement('div');
             spacer.className = 'grid-footer-spacer';
             grid.appendChild(spacer);
@@ -477,26 +455,18 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             renderPodcastList();
-
-            // 初始化主题
             const savedTheme = localStorage.getItem('podcast_theme');
             if (savedTheme === 'dark') updateThemeUI(true);
-
             const fileInput = document.getElementById('rssFileInput');
             if(fileInput) fileInput.onchange = handleFileUpload;
-            
             const editBtn = document.getElementById('editBtn');
             if(editBtn) editBtn.onclick = (e) => { e.stopPropagation(); document.body.classList.toggle('edit-mode'); };
 
             const range = document.getElementById('progressRange');
             if(range) {
-                // 修改点：使用 change 事件配合 input，确保拖动释放后系统同步进度
                 range.oninput = (e) => PlayerCore.seek(e.target.value);
-                range.onchange = () => {
-                    if (typeof PlayerCore.forceSyncState === 'function') {
-                        PlayerCore.forceSyncState();
-                    }
-                };
+                // 关键点：松手时立刻强制同步一次系统状态
+                range.onchange = () => { if(typeof PlayerCore.forceSyncState === 'function') PlayerCore.forceSyncState(); };
             }
 
             PlayerCore.onTimeUpdate((pct, cur, tot) => {
@@ -510,10 +480,14 @@
                 if(dt) dt.innerText = tot;
             });
 
+            // 系统级播放状态回传监听
+            PlayerCore.audio.addEventListener('play', () => window.updatePlayIcons(true));
+            PlayerCore.audio.addEventListener('pause', () => window.updatePlayIcons(false));
+
             PlayerCore.audio.onended = () => {
                 window.updatePlayIcons(false);
-                // 播放结束强制清空影子时间，防止下一首误恢复进度
                 PlayerCore._shadowTime = 0;
+                if(typeof PlayerCore.stopSyncLoop === 'function') PlayerCore.stopSyncLoop();
             };
         });
     </script>
