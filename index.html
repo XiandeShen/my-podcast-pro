@@ -348,7 +348,8 @@
                     
                     document.getElementById('markDoneBtn').classList.toggle('is-active', !!ep.isFinished);
                     
-                    PlayerCore.updateMetadata(ep.title, p.title, cover);
+                    // 移除 MediaSession 元数据设置
+                    // PlayerCore.updateMetadata(ep.title, p.title, cover);
                     PlayerCore.play(ep.audioUrl);
                     PlayerCore.audio.playbackRate = speeds[currentSpeedIndex];
                     window.updatePlayIcons(true);
@@ -498,10 +499,10 @@
                 if(dt) dt.innerText = tot;
             });
 
-            // 修改：在播放结束时也更新 MediaSession
+            // 播放结束时仅更新 UI
             PlayerCore.audio.onended = () => {
                 window.updatePlayIcons(false);
-                PlayerCore.updateMediaSessionState(); // 新增：同步系统状态
+                // 移除 MediaSession 更新
             };
         });
     </script>
