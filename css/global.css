@@ -3,15 +3,16 @@
     --text-main: #1d1d1f;
     --text-sub: #86868b;
     --bg-gray: #f2f2f7;
-    --radius-card: 12px;
+    --radius-card: 10px;
     --nav-bg: rgba(255, 255, 255, 0.75);
     --danger: #ff3b30;
+    --transition-standard: 0.4s cubic-bezier(0.2, 1, 0.2, 1);
+    --transition-fast: 0.2s ease;
 }
 
 * {
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
-    box-sizing: border-box;
 }
 
 ::-webkit-scrollbar { display: none; }
@@ -22,201 +23,203 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro", sans-serif;
     background-color: var(--bg-gray);
     color: var(--text-main);
-    /* 核心修改：移除 fixed 和 hidden，允许 body 自由滚动 */
-    min-height: 100%;
-    width: 100%;
-    user-select: none;
-    overflow-x: hidden;
-}
-
-/* 关键：仅当弹窗开启时，才锁定 body 的背景滚动 */
-body.modal-open {
-    position: fixed;
-    width: 100%;
-    height: 100dvh;
+    height: 100svh; 
+    width: 100vw;
     overflow: hidden;
-}
-
-/* 修复残影：当二级页面开启时，将底层容器设为不可见，迫使渲染引擎忽略它 */
-body.modal-open .app-container {
-    visibility: hidden;
+    user-select: none;
 }
 
 .app-container { 
     display: flex; 
-    flex-direction: column;
-    min-height: 100dvh; 
+    height: 100%; 
     width: 100%; 
-    position: relative; 
 }
 
 .main-layout { 
     flex: 1; 
     display: flex; 
     flex-direction: column; 
+    overflow: hidden; 
     position: relative; 
-    padding: 0 15px; 
-    /* 核心修改：移除内部滚动，让 body 滚动以触发工具栏收起 */
-    overflow: visible;
+    background: transparent !important;
 }
 
-.inline-header {
-    display: flex; justify-content: space-between; align-items: center;
-    background: transparent;
-    flex-shrink: 0;
-}
-.header-left .brand-wrapper { display: flex; align-items: center; gap: 12px; cursor: pointer; }
-.brand-icon-pro { width: 32px; height: 32px; }
-#brandTitle { font-size: 24px; font-weight: 800; margin: 0; }
-.header-actions { display: flex; gap: 12px; }
-.action-btn { background: none; border: none; padding: 8px; cursor: pointer; color: var(--text-main); opacity: 0.8; transition: 0.2s; }
-
-.content {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    align-content: start !important;
-    gap: 15px;
-    padding: 10px 0 120px 0 !important;
-    width: 100%;
+.header { 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 80px; 
+    padding-top: env(safe-area-inset-top); 
+    background: var(--nav-bg) !important; 
+    backdrop-filter: blur(25px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
+    z-index: 1000;
+    border-bottom: 0.5px solid rgba(0,0,0,0.08);
+    display: flex; 
+    align-items: center; 
+    box-sizing: content-box;
 }
 
-.podcast-card {
-    position: relative; aspect-ratio: 1/1;
-    border-radius: var(--radius-card);
-    background-image: var(--card-cover);
-    background-size: cover; background-position: center;
-    cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,0.08);
-    transition: transform 0.2s cubic-bezier(0.2, 0, 0.2, 1);
+.header-content {
+    height: 80px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between;
+    width: 100%; 
+    padding: 0 24px;
+    box-sizing: border-box;
 }
+
+.header-left { display: flex; align-items: center; flex: 1; overflow: hidden; }
+.brand-wrapper { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.brand-icon-pro { width: 36px; height: 36px; border-radius: 9px; background: linear-gradient(135deg, #af52de, #5e5ce6); flex-shrink: 0; }
+#brandTitle { font-size: 20px; font-weight: 800; letter-spacing: 0.5px; margin: 0; }
+
+.header-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.action-btn {
+    width: 40px; height: 40px; 
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; 
+    color: var(--text-main); 
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0,0,0,0.05);
+    cursor: pointer; 
+    transition: all var(--transition-fast);
+}
+
+.action-btn:active { transform: scale(0.9); background: rgba(0,0,0,0.05); }
+
+body.edit-mode #editBtn {
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+.content { 
+    flex: 1; 
+    overflow-y: auto; 
+    padding-top: calc(80px + env(safe-area-inset-top) + 20px) !important;
+    padding-left: 24px;
+    padding-right: 24px;
+    padding-bottom: calc(120px + env(safe-area-inset-bottom));
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); 
+    gap: 24px;
+    background: transparent !important;
+}
+
+@media (min-width: 768px) {
+    .content {
+        padding-top: calc(80px + 40px) !important;
+        padding-left: 48px;
+        padding-right: 48px;
+        padding-bottom: 160px;
+        grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+        gap: 32px;
+    }
+}
+
+.podcast-card { 
+    position: relative; 
+    cursor: pointer; 
+    transition: transform var(--transition-standard), opacity var(--transition-standard); 
+    animation: cardFadeIn 0.6s cubic-bezier(0.2, 1, 0.2, 1) both;
+}
+
+@keyframes cardFadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.podcast-card::before {
+    content: ""; display: block; aspect-ratio: 1/1;
+    background-image: var(--card-cover); background-size: cover; background-position: center;
+    border-radius: var(--radius-card); 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05), 0 10px 25px rgba(0,0,0,0.08); 
+    margin-bottom: 12px;
+    transition: transform var(--transition-fast);
+}
+
 .podcast-card:active { transform: scale(0.96); }
+.podcast-card:active::before { transform: scale(0.98); }
 
-.delete-badge {
-    position: absolute; top: -8px; right: -8px;
-    width: 24px; height: 24px; background: var(--danger);
-    border-radius: 50%; display: none; align-items: center; justify-content: center;
-    border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-}
-body.edit-mode .delete-badge { display: flex; }
-.card-info { position: absolute; bottom: 0; left: 0; right: 0; padding: 12px; background: linear-gradient(transparent, rgba(0,0,0,0.6)); border-radius: 0 0 var(--radius-card) var(--radius-card); color: #fff; }
-.card-info h3 { margin: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.card-info p { margin: 2px 0 0; font-size: 11px; opacity: 0.8; }
+.card-info h3 { font-size: 14px; margin: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-info p { font-size: 11px; color: var(--text-sub); margin-top: 4px; }
 
 .modal-overlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100dvh;
-    background: var(--bg-gray); display: none; flex-direction: column; z-index: 500;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.2); 
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    z-index: 1500; display: none; align-items: center; justify-content: center;
+    transition: opacity 0.3s ease;
 }
-.episode-modal { width: 100%; height: 100%; display: flex; flex-direction: column; max-width: 1000px; margin: 0 auto; background: var(--bg-gray); }
-.modal-content { 
-    flex: 1; 
-    overflow-y: auto; 
-    overscroll-behavior-y: contain; 
-    -webkit-overflow-scrolling: touch;
-    padding: 0 40px 140px; 
-    touch-action: pan-y;
-}
-.modal-hero { display: flex; flex-direction: row; align-items: center; gap: 40px; margin-bottom: 50px; min-height: 280px; }
-.modal-big-cover { width: 280px; height: 280px; border-radius: 20px; object-fit: cover; box-shadow: 0 20px 45px rgba(0,0,0,0.12); flex-shrink: 0; }
-.modal-hero-text { flex: 1; min-width: 0; display: flex; flex-direction: column; margin-top: -30px; }
-.modal-info-title { font-size: 32px; font-weight: 800; margin: 0 0 10px 0; line-height: 1.2; letter-spacing: -0.8px; color: #000; }
-.modal-info-author { font-size: 19px; color: var(--accent); font-weight: 600; margin-bottom: 20px; }
-.modal-info-desc { font-size: 15px; line-height: 1.6; color: #444; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin: 0; }
-.desc-toggle-btn { display: none; background: none; border: none; color: var(--accent); font-size: 14px; font-weight: 600; padding: 6px 0; cursor: pointer; align-self: flex-start; }
 
-.desc-full-overlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100dvh;
-    background: rgba(0,0,0,0.3); 
-    backdrop-filter: blur(5px); 
-    z-index: 3000; display: none; align-items: center; justify-content: center;
-    padding: 20px;
-}
-.desc-full-overlay.is-active { display: flex; }
-.desc-full-card { 
-    background: rgba(255, 255, 255, 0.7); 
-    backdrop-filter: blur(25px) saturate(180%); 
+.episode-modal {
+    background: rgba(255, 255, 255, 0.8); 
+    backdrop-filter: blur(25px) saturate(180%);
     -webkit-backdrop-filter: blur(25px) saturate(180%);
-    width: 100%; max-width: 500px; 
-    border-radius: 24px; padding: 25px; 
-    box-shadow: 0 20px 50px rgba(0,0,0,0.1); 
-    display: flex; flex-direction: column; 
-    max-height: 80vh; 
-    border: 0.5px solid rgba(255, 255, 255, 0.4); 
-    position: relative;
-}
-
-.desc-full-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 15px;
-}
-.desc-full-card h3 { 
-    margin: 0; 
-    font-size: 20px; 
-    font-weight: 700; 
-    padding-right: 40px; 
-    line-height: 1.3;
-}
-
-.close-icon-btn {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    background: rgba(0, 0, 0, 0.05);
-    border: none;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-main);
-    cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
-    z-index: 10;
-}
-.close-icon-btn:active {
-    background: rgba(0, 0, 0, 0.1);
-    transform: scale(0.9);
-}
-
-.desc-full-text { 
-    font-size: 16px; 
-    line-height: 1.6; 
-    color: #1d1d1f; 
-    overflow-y: auto; 
-    flex: 1; 
-    white-space: pre-wrap; 
-    padding-right: 5px;
-}
-
-.episode-list-container { margin-top: 20px; }
-.ep-list-header { font-size: 22px; font-weight: 700; padding-bottom: 15px; border-bottom: 1px solid rgba(0,0,0,0.1); margin-bottom: 10px; }
-.episode-list-item { display: flex; align-items: center; padding: 18px 10px; border-bottom: 1px solid rgba(0,0,0,0.05); cursor: pointer; border-radius: 12px; transition: background 0.2s; }
-.episode-list-item:hover { background: rgba(0,0,0,0.04); }
-.ep-list-cover { width: 52px; height: 52px; border-radius: 8px; margin-right: 18px; flex-shrink: 0; }
-.ep-list-info { flex: 1; min-width: 0; }
-
-.ep-list-title { 
-    font-size: 16px; 
-    font-weight: 600; 
-    margin-bottom: 4px; 
-    color: #1d1d1f; 
-    display: -webkit-box;
-    -webkit-line-clamp: 23;
-    -webkit-box-orient: vertical;
+    width: 92%; max-width: 550px; height: 70vh;
+    border-radius: 18px; 
+    display: flex; flex-direction: column;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.15); 
+    border: 0.5px solid rgba(255,255,255,0.4); 
     overflow: hidden;
-    white-space: normal;
-    word-break: break-all;
+    animation: modalSlide 0.4s cubic-bezier(0.2, 1, 0.2, 1);
+    transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
-.ep-list-meta { font-size: 13px; color: var(--text-sub); }
+@keyframes modalSlide { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-@media (max-width: 768px) {
-    .modal-hero { flex-direction: column; align-items: center; text-align: center; gap: 24px; margin-bottom: 30px; }
-    .modal-big-cover { width: 220px; height: 220px; }
-    .modal-hero-text { margin-top: 0; }
-    .modal-info-title { font-size: 24px; }
-    .modal-content { padding: 0 20px 140px; }
-    .modal-info-desc { text-align: left; }
-    .desc-toggle-btn { align-self: center; }
+.modal-header { padding: 20px 24px; border-bottom: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+.modal-header h3 { font-size: 17px; margin: 0; font-weight: 800; }
+.modal-close-x { 
+    background: rgba(0,0,0,0.05); border: none; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 20px; 
+    transition: transform var(--transition-fast);
 }
+.modal-close-x:active { transform: scale(0.8); }
+
+.modal-content { flex: 1; overflow-y: auto; padding: 10px 16px; background: transparent !important; }
+
+.episode-list-item { 
+    display: flex; align-items: center; padding: 12px; border-radius: 14px; cursor: pointer; 
+    transition: background 0.2s ease, transform 0.2s ease; 
+}
+.episode-list-item:active { transform: scale(0.97); background: rgba(0,0,0,0.05); }
+
+/* 已读状态列表 UI */
+.episode-list-item.is-finished { opacity: 0.6; }
+.episode-list-item.is-finished .ep-list-title { text-decoration: line-through; color: var(--text-sub); }
+.finished-check { color: var(--accent); margin-left: auto; display: flex; align-items: center; }
+
+.ep-list-cover { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; margin-right: 12px; }
+.ep-list-info { flex: 1; overflow: hidden; }
+.ep-list-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ep-list-meta { font-size: 10px; color: var(--accent); margin-top: 2px; font-weight: 700; }
+
+.mini-progress-bar { 
+    width: 100%; 
+    height: 2px; 
+    background: transparent !important; 
+    position: absolute; 
+    bottom: 0; 
+    left: 0; 
+}
+.mini-progress-fill { 
+    height: 100%; 
+    background: var(--accent); 
+    width: 0%; 
+    transition: width 0.1s linear; 
+    box-shadow: 0 0 12px var(--accent); 
+}
+
+.delete-badge {
+    position: absolute; top: -8px; right: -8px; width: 28px; height: 28px;
+    background: var(--danger); border: 2px solid #fff; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: scale(0.5); transition: 0.3s; z-index: 10;
+}
+body.edit-mode .delete-badge { opacity: 1; transform: scale(1); }
+body.edit-mode .podcast-card { animation: shake 0.5s infinite; }
+@keyframes shake { 0%,100%{transform:rotate(0.5deg)} 50%{transform:rotate(-0.5deg)} }
