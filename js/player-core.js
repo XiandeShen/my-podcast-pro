@@ -1,90 +1,75 @@
 // js/player-core.js
 
+// 核心锁定：必须关联到 index.html 里的真实 DOM
 const sysAudio = document.getElementById('main-audio-player') || new Audio();
 
 export const PlayerCore = {
     audio: sysAudio,
     _onTimeUpdate: null,
-    _lastSyncRealTime: 0,
+    _lastSyncTime: 0,
 
     play(url) {
         if (!url) return;
         
-        if (this.audio.src !== url) {
+        const isChangingSource = this.audio.src !== url;
+        if (isChangingSource) {
             this.audio.src = url;
             this.audio.load();
         }
         
-        const currentRate = this.audio.playbackRate;
         const playPromise = this.audio.play();
-        
         if (playPromise !== undefined) {
             playPromise.then(() => {
-                this.audio.playbackRate = currentRate;
-                // 关键：播放成功后延迟触发“双跳唤醒”
-                setTimeout(() => this.wakeupSystemTimer(), 300);
+                // 播放成功后初始化 MediaSession
+                this.syncMediaSession();
             }).catch(e => console.error("Playback Error:", e));
         }
 
+        // 基础监听
         this.audio.ontimeupdate = () => {
             const cur = this.audio.currentTime;
             const dur = this.audio.duration;
-
-            if (this._onTimeUpdate) {
-                const safeDur = (isFinite(dur) && dur > 0) ? dur : 0;
-                const safePct = safeDur > 0 ? (cur / safeDur) * 100 : 0;
-                this._onTimeUpdate(safePct, this.format(cur), this.format(safeDur));
-            }
-
-            // 每隔 10 秒强制同步一次，防止系统计时器漂移或睡眠
-            if (Math.abs(cur - this._lastSyncRealTime) > 10) {
-                this.forceSyncState();
-                this._lastSyncRealTime = cur;
+            
+            // 内部 UI 更新（每 250ms 左右触发一次，用于网页内的进度条平滑）
+            if (this._onTimeUpdate && isFinite(cur)) {
+                const safePct = (cur / dur) * 100 || 0;
+                this._onTimeUpdate(safePct, this.format(cur), this.format(dur));
             }
         };
 
-        this.audio.onplaying = () => this.forceSyncState();
-        this.audio.onpause = () => this.forceSyncState();
-        this.audio.onseeked = () => this.forceSyncState();
+        // 状态变更监听：这是安卓同步的关键
+        this.audio.onplay = () => this.syncMediaSession();
+        this.audio.onpause = () => this.syncMediaSession();
+        this.audio.onratechange = () => this.syncMediaSession();
+        // 当拖动进度结束时，必须通知系统新起点，否则系统进度条会弹回旧位置
+        this.audio.onseeked = () => this.syncMediaSession();
     },
 
-    // 唤醒补丁：通过极小的位移强制系统通知栏刷新计时引擎
-    wakeupSystemTimer() {
-        if (!('mediaSession' in navigator) || !isFinite(this.audio.duration)) return;
-        
-        const actual = this.audio.currentTime;
-        // 第一跳：推一个微小的偏离值
-        this.doSync(actual + 0.001);
-        
-        // 第二跳：100ms 后推回真实值，形成“动态”信号
-        setTimeout(() => {
-            this.doSync(this.audio.currentTime);
-            this._lastSyncRealTime = this.audio.currentTime;
-        }, 100);
-    },
-
-    forceSyncState() {
-        this.doSync(this.audio.currentTime);
-    },
-
-    doSync(timeValue) {
+    /**
+     * 核心同步逻辑：仿 Apple Podcasts 机制
+     * 不要实时同步，只在“状态转折点”同步起点和速率
+     */
+    syncMediaSession() {
         if (!('mediaSession' in navigator)) return;
-        const dur = this.audio.duration;
-        if (!isFinite(dur) || dur <= 0) return;
 
+        // 1. 同步播放状态
         navigator.mediaSession.playbackState = this.audio.paused ? "paused" : "playing";
-        
-        try {
-            // 必须严格限制范围，防止越界导致安卓 MediaSession 崩溃
-            const safePos = Math.min(Math.max(0, timeValue), dur);
-            
-            navigator.mediaSession.setPositionState({
-                duration: dur,
-                playbackPosition: safePos,
-                playbackRate: this.audio.playbackRate || 1.0
-            });
-        } catch (e) {
-            console.warn("Sync error:", e);
+
+        // 2. 同步时间坐标轴
+        const dur = this.audio.duration;
+        const cur = this.audio.currentTime;
+
+        if (Number.isFinite(dur) && dur > 0 && Number.isFinite(cur)) {
+            try {
+                // 告诉系统：我在这个时间点，以这个倍速运行。系统会自动接管后续的数值累加。
+                navigator.mediaSession.setPositionState({
+                    duration: dur,
+                    playbackPosition: Math.min(cur, dur),
+                    playbackRate: this.audio.playbackRate || 1.0
+                });
+            } catch (e) {
+                console.warn("PositionState Sync Failed", e);
+            }
         }
     },
 
@@ -93,9 +78,15 @@ export const PlayerCore = {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: title,
                 artist: artist,
-                artwork: [{ src: cover, sizes: '512x512', type: 'image/png' }]
+                artwork: [
+                    { src: cover, sizes: '96x96', type: 'image/png' },
+                    { src: cover, sizes: '128x128', type: 'image/png' },
+                    { src: cover, sizes: '256x256', type: 'image/png' },
+                    { src: cover, sizes: '512x512', type: 'image/png' }
+                ]
             });
 
+            // 注册系统控制指令
             const actions = {
                 play: () => this.audio.play(),
                 pause: () => this.audio.pause(),
@@ -104,36 +95,52 @@ export const PlayerCore = {
                 seekto: (details) => {
                     if (details.seekTime !== undefined) {
                         this.audio.currentTime = details.seekTime;
-                        this.forceSyncState();
+                        // seekto 是用户操作，完成后 onseeked 会触发 syncMediaSession
                     }
+                },
+                stop: () => {
+                    this.audio.pause();
+                    this.audio.currentTime = 0;
                 }
             };
-            Object.entries(actions).forEach(([act, hdl]) => {
-                try { navigator.mediaSession.setActionHandler(act, hdl); } catch (e) {}
+
+            Object.entries(actions).forEach(([action, handler]) => {
+                try {
+                    navigator.mediaSession.setActionHandler(action, handler);
+                } catch (e) {
+                    console.warn(`Action [${action}] not supported`);
+                }
             });
         }
     },
 
     onTimeUpdate(cb) { this._onTimeUpdate = cb; },
+
     toggle() {
-        if (this.audio.paused) { this.audio.play(); return true; } 
-        else { this.audio.pause(); return false; }
-    },
-    seek(pct) {
-        const dur = this.audio.duration;
-        if (isFinite(dur) && dur > 0) {
-            this.audio.currentTime = (pct / 100) * dur;
-            this.forceSyncState();
+        if (this.audio.paused) { 
+            this.audio.play(); 
+            return true; 
+        } else { 
+            this.audio.pause(); 
+            return false; 
         }
     },
-    seekOffset(s) {
-        const dur = this.audio.duration;
-        if (!isFinite(dur) || dur <= 0) return;
-        this.audio.currentTime = Math.max(0, Math.min(this.audio.currentTime + s, dur));
-        this.forceSyncState();
+
+    seek(pct) {
+        if (this.audio.duration && isFinite(this.audio.duration)) {
+            const target = (pct / 100) * this.audio.duration;
+            this.audio.currentTime = target;
+        }
     },
+
+    seekOffset(s) {
+        if (!isFinite(this.audio.duration)) return;
+        const target = Math.max(0, Math.min(this.audio.currentTime + s, this.audio.duration));
+        this.audio.currentTime = target;
+    },
+
     format(s) {
-        if (!isFinite(s) || s <= 0) return "0:00";
+        if (isNaN(s) || !isFinite(s)) return "0:00";
         const m = Math.floor(s / 60);
         const sec = Math.floor(s % 60);
         return `${m}:${sec < 10 ? '0' : ''}${sec}`;
