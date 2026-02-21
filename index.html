@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="css/global.css">
     <link rel="stylesheet" href="css/player.css">
     <style>
-        /* 布局修正：确保 inline-header 独占一行且不遮挡内容 */
         .inline-header {
             grid-column: 1 / -1;
             display: flex;
@@ -26,12 +25,10 @@
         .brand-icon-pro { width: 32px; height: 32px; }
         #brandTitle { font-size: 24px; font-weight: 800; margin: 0; }
         .header-actions { display: flex; gap: 12px; }
-        
-        /* 修正 content 布局：确保内容始终从顶部开始，不居中 */
         .content {
             display: grid !important;
             grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            align-content: start !important; /* 强制内容从顶部开始排列 */
+            align-content: start !important;
             gap: 24px;
             padding-top: 10px !important;
             padding-bottom: 120px !important;
@@ -78,7 +75,7 @@
                         </label>
                     </div>
                 </div>
-                </main>
+            </main>
 
             <footer class="mini-player is-empty" id="miniPlayer" onclick="window.expandPlayer()">
                 <div class="mini-player-content">
@@ -109,10 +106,13 @@
                     <img id="modalBigCover" class="modal-big-cover" src="">
                     <h2 id="modalPodTitle" class="modal-info-title"></h2>
                     <div id="modalPodAuthor" class="modal-info-author"></div>
-                    <p id="modalPodDesc" class="modal-info-desc"></p>
+                    <div class="modal-info-desc-container">
+                        <p id="modalPodDesc" class="modal-info-desc"></p>
+                        <button id="descToggleBtn" class="desc-toggle-btn" onclick="window.toggleDesc()">展开全文</button>
+                    </div>
                 </div>
                 <div class="episode-list-container">
-                    <div class="ep-list-header">全部单集</div>
+                    <div class="ep-list-header">节目列表</div>
                     <div id="modalEpisodeList"></div>
                 </div>
             </div>
@@ -171,6 +171,13 @@
         window.closePlayer = () => document.getElementById('playerOverlay').classList.remove('is-active');
         window.closeModal = () => document.getElementById('episodeModalOverlay').style.display = 'none';
 
+        window.toggleDesc = () => {
+            const desc = document.getElementById('modalPodDesc');
+            const btn = document.getElementById('descToggleBtn');
+            const isExp = desc.classList.toggle('is-expanded');
+            btn.innerText = isExp ? "收起" : "展开全文";
+        };
+
         window.handleToggle = () => {
             if (!PlayerCore.audio.src || PlayerCore.audio.src === window.location.href) return;
             const isPlaying = PlayerCore.toggle();
@@ -206,15 +213,19 @@
             const modalOverlay = document.getElementById('episodeModalOverlay');
             const listContainer = document.getElementById('modalEpisodeList');
             const scrollArea = document.getElementById('modalScrollArea');
+            const desc = document.getElementById('modalPodDesc');
             
-            // 填充头部详情
             document.getElementById('modalBigCover').src = p.image;
             document.getElementById('modalPodTitle').innerText = p.title;
             document.getElementById('modalPodAuthor').innerText = p.author;
-            document.getElementById('modalPodDesc').innerText = p.description || "暂无简介";
+            desc.innerText = p.description || "暂无简介";
+            
+            // 重置展开状态
+            desc.classList.remove('is-expanded');
+            document.getElementById('descToggleBtn').innerText = "展开全文";
             
             listContainer.innerHTML = ""; 
-            scrollArea.scrollTop = 0; // 重置滚动位置
+            scrollArea.scrollTop = 0;
             modalOverlay.style.display = 'flex'; 
 
             p.episodes.forEach(ep => {
@@ -256,7 +267,7 @@
                     const pod = {
                         title: channel.querySelector("title")?.textContent || "未知播客",
                         author: channel.querySelector("itunes\\:author, author")?.textContent || "未知作者",
-                        description: channel.querySelector("description")?.textContent || "", // 新增简介
+                        description: channel.querySelector("description")?.textContent || "",
                         image: getImg(channel),
                         episodes: Array.from(dom.querySelectorAll("item")).map(item => ({
                             title: item.querySelector("title")?.textContent,
