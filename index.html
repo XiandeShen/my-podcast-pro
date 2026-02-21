@@ -114,6 +114,7 @@
         let currentSpeedIndex = 0;
         let currentPlayingIdx = { pod: -1, ep: -1 };
 
+        // 菜单逻辑
         const moreMenu = document.getElementById('moreMenu');
         const menuToggleBtn = document.getElementById('menuToggleBtn');
         menuToggleBtn.onclick = (e) => { e.stopPropagation(); moreMenu.classList.toggle('show'); };
@@ -277,24 +278,40 @@
             const rg = document.getElementById('progressRange');
             if(rg) {
                 rg.oninput = (e) => PlayerCore.seek(e.target.value);
-                // 拖动结束时强刷
-                rg.onchange = () => { if(typeof PlayerCore.forceSyncState === 'function') PlayerCore.forceSyncState(); };
+                // 拖动后松手，立刻执行双跳唤醒
+                rg.onchange = () => {
+                    if(typeof PlayerCore.wakeupSystemTimer === 'function') {
+                        PlayerCore.wakeupSystemTimer();
+                    }
+                };
             }
 
+            // 监听 PlayerCore 的时间回调更新 UI
             PlayerCore.onTimeUpdate((pct, cur, tot) => {
-                document.getElementById('miniProgressFill').style.width = pct + '%';
-                document.getElementById('progressRange').value = pct;
-                document.getElementById('currentTime').innerText = cur;
-                document.getElementById('durationTime').innerText = tot;
+                const pr = document.getElementById('progressRange');
+                const mf = document.getElementById('miniProgressFill');
+                const ct = document.getElementById('currentTime');
+                const dt = document.getElementById('durationTime');
+                
+                if(pr) pr.value = pct;
+                if(mf) mf.style.width = pct + '%';
+                if(ct) ct.innerText = cur;
+                if(dt && tot !== "0:00") dt.innerText = tot;
             });
 
-            // 监听 audio 元素底层的播放暂停，确保 UI 同步
+            // 联动系统播放状态
             PlayerCore.audio.addEventListener('play', () => window.updatePlayIcons(true));
             PlayerCore.audio.addEventListener('pause', () => window.updatePlayIcons(false));
+            
+            // 真正开始解码播放时，唤醒系统通知栏
+            PlayerCore.audio.addEventListener('playing', () => {
+                if(typeof PlayerCore.wakeupSystemTimer === 'function') {
+                    PlayerCore.wakeupSystemTimer();
+                }
+            });
+
             PlayerCore.audio.onended = () => {
                 window.updatePlayIcons(false);
-                PlayerCore._shadowTime = 0;
-                if(typeof PlayerCore.stopSyncLoop === 'function') PlayerCore.stopSyncLoop();
             };
         });
     </script>
