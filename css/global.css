@@ -112,7 +112,13 @@ body {
     }
 }
 
-.podcast-card { position: relative; cursor: pointer; transition: 0.4s cubic-bezier(0.2, 1, 0.2, 1); }
+.podcast-card { 
+    position: relative; 
+    cursor: pointer; 
+    transition: transform 0.4s cubic-bezier(0.2, 1, 0.2, 1);
+    -webkit-tap-highlight-color: transparent;
+}
+
 .podcast-card::before {
     content: ""; display: block; aspect-ratio: 1/1;
     background-image: var(--card-cover); background-size: cover; background-position: center;
@@ -120,7 +126,15 @@ body {
     box-shadow: 0 4px 12px rgba(0,0,0,0.05), 0 10px 25px rgba(0,0,0,0.08); 
     margin-bottom: 12px;
 }
-.podcast-card:hover { transform: translateY(-6px); }
+
+/* 仅在支持鼠标悬停的设备上启用 hover 动画 */
+@media (hover: hover) {
+    .podcast-card:hover { transform: translateY(-6px); }
+}
+
+/* 移动端点击反馈优化：使用 active 代替 hover，且仅做轻微缩放 */
+.podcast-card:active { transform: scale(0.96); transition: transform 0.1s; }
+
 .card-info h3 { font-size: 14px; margin: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-info p { font-size: 11px; color: var(--text-sub); margin-top: 4px; }
 
