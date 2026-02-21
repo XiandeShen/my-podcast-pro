@@ -2,7 +2,6 @@
 export const PlayerCore = {
     audio: new Audio(),
     _onTimeUpdate: null,
-    _lastSyncTime: 0, // 记录上次同步给系统的时间戳
 
     play(url) {
         if (!url) return;
@@ -13,15 +12,16 @@ export const PlayerCore = {
         if (playPromise !== undefined) {
             playPromise.then(() => {
                 this.audio.playbackRate = currentRate;
-                this.syncMediaSession("playing");
+                // 仅在成功播放后，明确通知系统：开始计时
+                this.forceSystemSync("playing");
             }).catch(error => console.error("Playback Error:", error));
         }
 
+        // 关键：元数据加载后，只同步一次总时长，不频繁同步当前位置
         this.audio.onloadedmetadata = () => {
-            this.syncMediaSession();
+            this.forceSystemSync();
         };
 
-        // 核心优化：减少同步频率，防止三星系统时间轴抖动
         this.audio.ontimeupdate = () => {
             const cur = this.audio.currentTime;
             const dur = this.audio.duration;
@@ -31,24 +31,23 @@ export const PlayerCore = {
             
             if (this._onTimeUpdate) this._onTimeUpdate(pct, currentStr, totalStr);
             
-            // 策略：每 5 秒或进度发生大幅度跳变时才强制同步一次
-            // 平时让系统组件根据 playbackRate 自己走进度
-            if (Math.abs(cur - this._lastSyncTime) > 5) {
-                this.syncMediaSession();
-            }
+            // 注意：这里删除了 navigator.mediaSession.setPositionState
+            // 绝不在定时器里频繁调用它，这会和三星系统的内部计时器冲突导致归零
         };
 
-        // 监听底层事件，确保状态转换瞬间同步
-        this.audio.onplay = () => this.syncMediaSession("playing");
-        this.audio.onpause = () => this.syncMediaSession("paused");
-        this.audio.onseeked = () => this.syncMediaSession();
+        // 监听原生状态改变，这是同步的最佳时机
+        this.audio.onplay = () => this.forceSystemSync("playing");
+        this.audio.onpause = () => this.forceSystemSync("paused");
+        
+        // 当用户在网页进度条拖动完成后，同步一次
+        this.audio.onseeked = () => this.forceSystemSync();
     },
 
-    // 核心同步函数：增加数值保护和频率限制
-    syncMediaSession(state = null) {
+    // 核心修复函数：强制同步状态
+    forceSystemSync(state = null) {
         if (!('mediaSession' in navigator)) return;
 
-        // 如果传入了状态，先更新状态
+        // 1. 先更新播放状态（playing/paused）
         if (state) {
             navigator.mediaSession.playbackState = state;
         }
@@ -56,20 +55,19 @@ export const PlayerCore = {
         const dur = this.audio.duration;
         const cur = this.audio.currentTime;
 
+        // 2. 只有在有明确时长且非 0 时才上报
         if (dur && !isNaN(dur) && dur > 0) {
             try {
-                // 确保数据是干净的浮点数/整数
-                const safePos = Math.max(0, Math.min(cur, dur));
+                // 必须确保 cur 永远小于 dur，哪怕差 0.1 秒
+                const safePos = Math.min(cur, dur - 0.1);
                 
                 navigator.mediaSession.setPositionState({
                     duration: dur,
-                    playbackPosition: safePos,
+                    playbackPosition: Math.max(0, safePos),
                     playbackRate: this.audio.playbackRate || 1.0
                 });
-                
-                this._lastSyncTime = safePos;
             } catch (e) {
-                console.warn("MediaSession sync error:", e);
+                console.warn("MediaSession Sync Error:", e);
             }
         }
     },
@@ -82,34 +80,34 @@ export const PlayerCore = {
                 artwork: [
                     { src: cover, sizes: '96x96' },
                     { src: cover, sizes: '128x128' },
-                    { src: cover, sizes: '192x192' },
-                    { src: cover, sizes: '256x256' },
                     { src: cover, sizes: '512x512' }
                 ]
             });
 
-            // 系统回调：操作后立即执行同步
+            // 注册系统回调
             navigator.mediaSession.setActionHandler('play', () => {
                 this.audio.play();
+                // 这里的状态由 onplay 监听器统一处理
                 if(window.updatePlayIcons) window.updatePlayIcons(true);
             });
             navigator.mediaSession.setActionHandler('pause', () => {
                 this.audio.pause();
+                // 这里的状态由 onpause 监听器统一处理
                 if(window.updatePlayIcons) window.updatePlayIcons(false);
             });
             navigator.mediaSession.setActionHandler('seekbackward', () => {
                 if(window.seekOffset) window.seekOffset(-15);
-                this.syncMediaSession();
+                this.forceSystemSync();
             });
             navigator.mediaSession.setActionHandler('seekforward', () => {
                 if(window.seekOffset) window.seekOffset(15);
-                this.syncMediaSession();
+                this.forceSystemSync();
             });
             navigator.mediaSession.setActionHandler('seekto', (details) => {
                 if (details.seekTime !== undefined) {
                     this.audio.currentTime = details.seekTime;
-                    // 跳转后必须立刻同步，且设置一个短暂的“冷却”防止系统回弹
-                    this.syncMediaSession();
+                    // 跳转瞬间同步一次位置
+                    this.forceSystemSync();
                 }
             });
         }
@@ -118,19 +116,14 @@ export const PlayerCore = {
     onTimeUpdate(cb) { this._onTimeUpdate = cb; },
 
     toggle() {
-        if (this.audio.paused) {
-            this.audio.play();
-            return true;
-        } else {
-            this.audio.pause();
-            return false;
-        }
+        if (this.audio.paused) { this.audio.play(); return true; }
+        else { this.audio.pause(); return false; }
     },
 
     seek(pct) {
         if (this.audio.duration) {
             this.audio.currentTime = (pct / 100) * this.audio.duration;
-            this.syncMediaSession();
+            this.forceSystemSync();
         }
     },
 
