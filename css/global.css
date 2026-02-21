@@ -22,8 +22,9 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro", sans-serif;
     background-color: var(--bg-gray);
     color: var(--text-main);
-    height: 100svh; width: 100vw;
-    /* 核心修改：禁止body滚动，防止触发浏览器工具栏隐藏 */
+    /* 核心修复：锁定 body 高度并禁止弹性偏移 */
+    height: 100%;
+    width: 100vw;
     overflow: hidden; 
     position: fixed;
     user-select: none;
@@ -31,8 +32,9 @@ body {
 
 .app-container { 
     display: flex; 
-    flex-direction: column; /* 确保垂直排列 */
-    height: 100%; width: 100%; 
+    flex-direction: column;
+    height: 100dvh; /* 使用动态视口高度 */
+    width: 100%; 
     position: relative; 
 }
 
@@ -41,8 +43,9 @@ body {
     display: flex; 
     flex-direction: column; 
     overflow-x: hidden; 
-    /* 核心修改：只让内容区内部滚动 */
     overflow-y: auto; 
+    /* 核心修复：防止滚动溢出触发浏览器工具栏 */
+    overscroll-behavior-y: contain; 
     -webkit-overflow-scrolling: touch; 
     position: relative; 
     padding: 0 15px; 
@@ -51,7 +54,7 @@ body {
 .inline-header {
     display: flex; justify-content: space-between; align-items: center;
     background: transparent;
-    flex-shrink: 0; /* 防止头部被压缩 */
+    flex-shrink: 0;
 }
 .header-left .brand-wrapper { display: flex; align-items: center; gap: 12px; cursor: pointer; }
 .brand-icon-pro { width: 32px; height: 32px; }
@@ -89,12 +92,20 @@ body.edit-mode .delete-badge { display: flex; }
 .card-info h3 { margin: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-info p { margin: 2px 0 0; font-size: 11px; opacity: 0.8; }
 
+/* 模态框优化 */
 .modal-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: var(--bg-gray); display: none; flex-direction: column; z-index: 500;
 }
 .episode-modal { width: 100%; height: 100%; display: flex; flex-direction: column; max-width: 1000px; margin: 0 auto; background: var(--bg-gray); }
-.modal-content { flex: 1; overflow-y: auto; padding: 0 40px 140px; }
+.modal-content { 
+    flex: 1; 
+    overflow-y: auto; 
+    /* 核心修复：二级页面滚动时不触发父级滚动 */
+    overscroll-behavior-y: contain; 
+    -webkit-overflow-scrolling: touch;
+    padding: 0 40px 140px; 
+}
 .modal-hero { display: flex; flex-direction: row; align-items: center; gap: 40px; margin-bottom: 50px; min-height: 280px; }
 .modal-big-cover { width: 280px; height: 280px; border-radius: 20px; object-fit: cover; box-shadow: 0 20px 45px rgba(0,0,0,0.12); flex-shrink: 0; }
 .modal-hero-text { flex: 1; min-width: 0; display: flex; flex-direction: column; margin-top: -30px; }
