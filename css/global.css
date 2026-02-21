@@ -27,21 +27,18 @@ body {
     width: 100vw;
     overflow: hidden;
     user-select: none;
-    /* 适配 iOS/Edge 底部安全区，防止 mini-player 过于靠下 */
-    padding-bottom: env(safe-area-inset-bottom);
 }
 
 .app-container { display: flex; height: 100%; width: 100%; }
 .main-layout { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
 
-/* 头部样式：添加安全区域适配 */
+/* 头部样式 */
 .inline-header {
     grid-column: 1 / -1;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    /* 核心修改：增加顶部安全区域填充，解决遮挡问题 */
-    padding: calc(10px + env(safe-area-inset-top)) 20px 10px 20px;
+    padding: 0px 0 10px 0;
     background: transparent;
 }
 .header-left .brand-wrapper { display: flex; align-items: center; gap: 12px; cursor: pointer; }
@@ -57,7 +54,6 @@ body {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     align-content: start !important;
     gap: 24px;
-    /* 调整 padding，头部已带间距，这里减少顶部 padding */
     padding: 10px 20px 120px 20px !important;
     height: 100%;
     overflow-y: auto;
@@ -102,8 +98,6 @@ body.edit-mode .delete-badge { display: flex; }
     border-radius: 20px 20px 0 0; display: flex; flex-direction: column;
     position: relative; box-shadow: 0 -10px 30px rgba(0,0,0,0.1);
     animation: slideUp 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-    /* 适配底部手势横条 */
-    padding-bottom: env(safe-area-inset-bottom);
 }
 
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
