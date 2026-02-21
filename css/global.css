@@ -22,24 +22,21 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro", sans-serif;
     background-color: var(--bg-gray);
     color: var(--text-main);
-    height: 100%;
-    width: 100vw;
-    overflow: hidden; 
-    position: fixed;
     user-select: none;
-    overscroll-behavior: none;
 }
 
 /* 关键：当弹窗开启时，禁止 body 的任何可能滚动行为 */
 body.modal-open {
     position: fixed;
     width: 100%;
+    height: 100vh;
+    overflow: hidden;
 }
 
 .app-container { 
     display: flex; 
     flex-direction: column;
-    height: 100dvh; 
+    min-height: 100dvh; 
     width: 100%; 
     position: relative; 
 }
@@ -49,13 +46,8 @@ body.modal-open {
     display: flex; 
     flex-direction: column; 
     overflow-x: hidden; 
-    overflow-y: auto; 
-    overscroll-behavior-y: contain; 
-    -webkit-overflow-scrolling: touch; 
     position: relative; 
     padding: 0 15px; 
-    /* 解决工具栏问题的核心：明确声明纵向平移手势 */
-    touch-action: pan-y;
 }
 
 .inline-header {
