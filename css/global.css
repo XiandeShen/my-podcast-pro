@@ -85,6 +85,7 @@ body {
     backdrop-filter: blur(10px);
     border: 1px solid rgba(0,0,0,0.05);
     cursor: pointer; 
+    transition: all 0.3s ease;
 }
 
 .content { 
@@ -111,7 +112,7 @@ body {
     }
 }
 
-.podcast-card { position: relative; cursor: pointer; }
+.podcast-card { position: relative; cursor: pointer; transition: 0.4s cubic-bezier(0.2, 1, 0.2, 1); }
 .podcast-card::before {
     content: ""; display: block; aspect-ratio: 1/1;
     background-image: var(--card-cover); background-size: cover; background-position: center;
@@ -119,6 +120,7 @@ body {
     box-shadow: 0 4px 12px rgba(0,0,0,0.05), 0 10px 25px rgba(0,0,0,0.08); 
     margin-bottom: 12px;
 }
+.podcast-card:hover { transform: translateY(-6px); }
 .card-info h3 { font-size: 14px; margin: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-info p { font-size: 11px; color: var(--text-sub); margin-top: 4px; }
 
@@ -140,7 +142,10 @@ body {
     box-shadow: 0 20px 50px rgba(0,0,0,0.15); 
     border: 0.5px solid rgba(255,255,255,0.4); 
     overflow: hidden;
+    animation: modalSlide 0.4s cubic-bezier(0.2, 1, 0.2, 1);
 }
+
+@keyframes modalSlide { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
 .modal-header { padding: 20px 24px; border-bottom: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
 .modal-header h3 { font-size: 17px; margin: 0; font-weight: 800; }
@@ -148,7 +153,7 @@ body {
 
 .modal-content { flex: 1; overflow-y: auto; padding: 10px 16px; background: transparent !important; }
 
-.episode-list-item { display: flex; align-items: center; padding: 12px; border-radius: 14px; cursor: pointer; }
+.episode-list-item { display: flex; align-items: center; padding: 12px; border-radius: 14px; cursor: pointer; transition: background 0.2s ease; }
 .episode-list-item:hover { background: rgba(0,0,0,0.03); }
 .ep-list-cover { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; margin-right: 12px; }
 .ep-list-info { flex: 1; overflow: hidden; }
@@ -168,6 +173,7 @@ body {
     height: 100%; 
     background: var(--accent); 
     width: 0%; 
+    transition: width 0.1s linear; 
     box-shadow: 0 0 12px var(--accent);
 }
 
@@ -175,6 +181,25 @@ body {
     position: absolute; top: -8px; right: -8px; width: 28px; height: 28px;
     background: var(--danger); border: 2px solid #fff; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    opacity: 0; transform: scale(1); z-index: 10;
+    opacity: 0; transform: scale(0.5); transition: 0.3s; z-index: 10;
 }
-body.edit-mode .delete-badge { opacity: 1; }
+body.edit-mode .delete-badge { opacity: 1; transform: scale(1); }
+body.edit-mode .podcast-card { animation: shake 0.5s infinite; }
+@keyframes shake { 0%,100%{transform:rotate(0.5deg)} 50%{transform:rotate(-0.5deg)} }
+
+/* 移动端禁用不跟手动画（保留编辑模式抖动） */
+@media (pointer: coarse) {
+    .action-btn,
+    .podcast-card,
+    .episode-modal,
+    .episode-list-item,
+    .delete-badge {
+        transition: none !important;
+        animation: none !important;
+    }
+
+    /* 显式保留编辑模式的抖动动画 */
+    body.edit-mode .podcast-card { 
+        animation: shake 0.5s infinite !important; 
+    }
+}
