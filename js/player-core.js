@@ -6,12 +6,14 @@ export const PlayerCore = {
     audio: sysAudio,
     _onTimeUpdate: null,
     _shadowTime: 0, 
-    _syncTimer: null, // 心跳定时器
+    _syncTimer: null,
 
     play(url) {
         if (!url) return;
         
+        // 如果是新链接，彻底重置所有状态
         if (this.audio.src !== url) {
+            this.stopSyncLoop();
             this._shadowTime = 0;
             this.audio.src = url;
             this.audio.load();
@@ -23,22 +25,28 @@ export const PlayerCore = {
         if (playPromise !== undefined) {
             playPromise.then(() => {
                 this.audio.playbackRate = currentRate;
-                this.startSyncLoop(); // 开启强同步
+                this.startSyncLoop();
+                // 确保在播放开始时推一次状态
                 this.forceSyncState();
             }).catch(e => console.error("Playback Error:", e));
         }
+
+        // 元数据加载完成后，必须立即同步一次时长，否则系统会一直显示 00:00
+        this.audio.onloadedmetadata = () => {
+            this.forceSyncState();
+        };
 
         this.audio.ontimeupdate = () => {
             const cur = this.audio.currentTime;
             const dur = this.audio.duration;
 
-            // 纠偏逻辑：如果系统异常归零
+            // 纠偏逻辑：如果系统在播放中突然汇报 0，强行拉回到我们的内存记录点
             if (cur === 0 && this._shadowTime > 0.5 && !this.audio.paused) {
                 this.audio.currentTime = this._shadowTime;
                 return;
             }
 
-            if (cur > 0 && isFinite(cur)) {
+            if (isFinite(cur) && cur > 0) {
                 this._shadowTime = cur;
             }
 
@@ -48,8 +56,10 @@ export const PlayerCore = {
             }
         };
 
+        // 状态监听
         this.audio.onplay = () => {
-            if (this._shadowTime > 0 && Math.abs(this.audio.currentTime - this._shadowTime) > 1) {
+            // 恢复播放时，如果发现进度丢失，强制写回
+            if (this._shadowTime > 0 && Math.abs(this.audio.currentTime - this._shadowTime) > 2) {
                 this.audio.currentTime = this._shadowTime;
             }
             this.startSyncLoop();
@@ -58,22 +68,24 @@ export const PlayerCore = {
 
         this.audio.onpause = () => {
             this.forceSyncState();
-            // 暂停后不立即停止心跳，确保最后一刻状态被系统接收
-            setTimeout(() => this.stopSyncLoop(), 1000);
+            // 暂停后保持 2 秒同步再停止，确保系统接收到最后的 Position
+            setTimeout(() => { if(this.audio.paused) this.stopSyncLoop(); }, 2000);
         };
 
         this.audio.onseeked = () => {
-            this._shadowTime = this.audio.currentTime;
+            if (isFinite(this.audio.currentTime)) {
+                this._shadowTime = this.audio.currentTime;
+            }
             this.forceSyncState();
         };
     },
 
-    // 开启高频同步心跳 (每 500ms 强制向系统对齐一次进度)
     startSyncLoop() {
         if (this._syncTimer) clearInterval(this._syncTimer);
+        // 缩短心跳间隔到 800ms，平衡性能与准确度
         this._syncTimer = setInterval(() => {
             this.forceSyncState();
-        }, 500);
+        }, 800);
     },
 
     stopSyncLoop() {
@@ -86,27 +98,28 @@ export const PlayerCore = {
     forceSyncState() {
         if (!('mediaSession' in navigator)) return;
 
-        // 核心修正：在安卓通知栏，必须显式赋值这个状态，否则进度条会重置
+        const dur = this.audio.duration;
+        // 关键：如果此时正在加载中，dur 可能是 NaN，此时强制跳过，不给系统发送错误数据
+        if (!isFinite(dur) || dur <= 0) return;
+
+        // 设置播放状态
         navigator.mediaSession.playbackState = this.audio.paused ? "paused" : "playing";
 
-        const dur = this.audio.duration;
-        // 关键：如果 audio 本身汇报了 0 且我们有缓存，用缓存顶替
+        // 读取当前时间，如果 audio 汇报了 0，我们用 _shadowTime 顶替发送给系统
         let cur = this.audio.currentTime;
-        if ((cur === 0 || isNaN(cur)) && this._shadowTime > 0) {
+        if ((!cur || cur === 0) && this._shadowTime > 0) {
             cur = this._shadowTime;
         }
 
-        if (Number.isFinite(dur) && dur > 0 && Number.isFinite(cur)) {
-            try {
-                // 强制对齐位置状态
-                navigator.mediaSession.setPositionState({
-                    duration: dur,
-                    playbackPosition: Math.max(0, Math.min(cur, dur)),
-                    playbackRate: this.audio.playbackRate || 1.0
-                });
-            } catch (e) {
-                // 部分版本不支持 setPositionState 会报错，静默处理
-            }
+        try {
+            // 核心修复：必须确保 playbackPosition 始终是一个有效的数字
+            navigator.mediaSession.setPositionState({
+                duration: dur,
+                playbackPosition: Math.min(Math.max(0, cur), dur),
+                playbackRate: this.audio.playbackRate || 1.0
+            });
+        } catch (e) {
+            // 即使报错也不中断逻辑
         }
     },
 
@@ -116,32 +129,30 @@ export const PlayerCore = {
                 title: title,
                 artist: artist,
                 artwork: [
-                    { src: cover, sizes: '96x96', type: 'image/png' },
-                    { src: cover, sizes: '128x128', type: 'image/png' },
-                    { src: cover, sizes: '256x256', type: 'image/png' },
                     { src: cover, sizes: '512x512', type: 'image/png' }
                 ]
             });
 
-            const actionHandlers = [
-                ['play', () => this.audio.play()],
-                ['pause', () => this.audio.pause()],
-                ['seekbackward', () => this.seekOffset(-15)],
-                ['seekforward', () => this.seekOffset(15)],
-                ['seekto', (details) => {
+            // 注册远程控制
+            const actions = {
+                play: () => this.audio.play(),
+                pause: () => this.audio.pause(),
+                seekbackward: () => this.seekOffset(-15),
+                seekforward: () => this.seekOffset(15),
+                seekto: (details) => {
                     if (details.seekTime !== undefined) {
                         this.audio.currentTime = details.seekTime;
                         this._shadowTime = details.seekTime;
                         this.forceSyncState();
                     }
-                }]
-            ];
+                }
+            };
 
-            for (const [action, handler] of actionHandlers) {
+            Object.entries(actions).forEach(([action, handler]) => {
                 try {
                     navigator.mediaSession.setActionHandler(action, handler);
                 } catch (e) {}
-            }
+            });
         }
     },
 
@@ -158,7 +169,7 @@ export const PlayerCore = {
     },
 
     seek(pct) {
-        if (this.audio.duration && isFinite(this.audio.duration)) {
+        if (isFinite(this.audio.duration)) {
             const target = (pct / 100) * this.audio.duration;
             this.audio.currentTime = target;
             this._shadowTime = target;
@@ -175,7 +186,7 @@ export const PlayerCore = {
     },
 
     format(s) {
-        if (isNaN(s) || !isFinite(s)) return "0:00";
+        if (!isFinite(s)) return "0:00";
         const m = Math.floor(s / 60);
         const sec = Math.floor(s % 60);
         return `${m}:${sec < 10 ? '0' : ''}${sec}`;
