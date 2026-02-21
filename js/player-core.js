@@ -24,7 +24,8 @@ export const PlayerCore = {
         if (playPromise !== undefined) {
             playPromise.then(() => {
                 this.audio.playbackRate = currentRate;
-                this.forceSyncState(); // 播放成功瞬间，强推一次状态给系统
+                // 播放成功后延迟一小下再推状态，确保 audio 内部 currentTime 已稳定
+                setTimeout(() => this.forceSyncState(), 100);
             }).catch(e => console.error("Playback Error:", e));
         }
 
@@ -51,7 +52,11 @@ export const PlayerCore = {
         };
 
         // 监听倍速/暂停等所有可能触发三星重置的事件
-        this.audio.onplay = () => this.forceSyncState();
+        this.audio.onplay = () => {
+            // 恢复播放时强制把影子时间塞回系统
+            if (this._shadowTime > 0) this.audio.currentTime = this._shadowTime;
+            this.forceSyncState();
+        };
         this.audio.onpause = () => this.forceSyncState();
         this.audio.onratechange = () => {
             // 三星切换倍速时，有时会丢失 currentTime，强制拉回
@@ -72,18 +77,20 @@ export const PlayerCore = {
         navigator.mediaSession.playbackState = this.audio.paused ? "paused" : "playing";
 
         const dur = this.audio.duration;
-        const cur = this.audio.currentTime;
+        // 关键点：如果暂停了，优先使用影子时间，防止 audio.currentTime 采样到 0
+        const cur = (this.audio.paused && this._shadowTime > 0) ? this._shadowTime : this.audio.currentTime;
 
         // 三星必须确保这三个值都是 finite（有限的）且 dur > 0
         if (Number.isFinite(dur) && dur > 0 && Number.isFinite(cur)) {
             try {
                 navigator.mediaSession.setPositionState({
                     duration: dur,
-                    playbackPosition: Math.min(cur, dur),
+                    playbackPosition: Math.max(0, Math.min(cur, dur)),
                     playbackRate: this.audio.playbackRate || 1.0
                 });
             } catch (e) {
                 // 捕获系统组件忙碌时的异常
+                console.warn("MediaSession setPositionState failed:", e);
             }
         }
     },
@@ -111,6 +118,7 @@ export const PlayerCore = {
                     if (details.seekTime !== undefined) {
                         this.audio.currentTime = details.seekTime;
                         this._shadowTime = details.seekTime;
+                        this.forceSyncState(); // 拖动后立即同步
                     }
                 }]
             ];
@@ -142,6 +150,7 @@ export const PlayerCore = {
             const target = (pct / 100) * this.audio.duration;
             this.audio.currentTime = target;
             this._shadowTime = target;
+            this.forceSyncState();
         }
     },
 
@@ -150,6 +159,7 @@ export const PlayerCore = {
         const target = Math.max(0, Math.min(this.audio.currentTime + s, this.audio.duration));
         this.audio.currentTime = target;
         this._shadowTime = target;
+        this.forceSyncState();
     },
 
     format(s) {
