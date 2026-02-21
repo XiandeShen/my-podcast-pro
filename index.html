@@ -10,7 +10,7 @@
     <style>
         /* 二级页面顶部边距优化 */
         .modal-hero {
-            padding-top: calc(30px + env(safe-area-inset-top));
+            padding-top: calc(100px + env(safe-area-inset-top));
             padding-bottom: 20px;
         }
         .modal-content {
@@ -41,6 +41,23 @@
             grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
             gap: 15px; 
             padding: 15px 0 120px 0 !important; 
+        }
+
+        /* 已读标记样式 */
+        .read-status-btn {
+            padding: 10px;
+            color: #ccc;
+            cursor: pointer;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .read-status-btn.is-read {
+            color: var(--accent);
+        }
+        .episode-list-item.is-read-text .ep-list-title {
+            opacity: 0.5;
         }
     </style>
 </head>
@@ -151,6 +168,10 @@
         let allPodcastsData = [];
         try { allPodcastsData = JSON.parse(localStorage.getItem('podcast_db') || '[]'); } catch(e) { allPodcastsData = []; }
 
+        // 加载已读数据
+        let readEpisodes = new Set();
+        try { readEpisodes = new Set(JSON.parse(localStorage.getItem('read_episodes') || '[]')); } catch(e) { readEpisodes = new Set(); }
+
         const speeds = [1.0, 1.25, 1.5, 2.0];
         let currentSpeedIndex = 0;
 
@@ -241,8 +262,11 @@
             });
 
             p.episodes.forEach(ep => {
+                const epId = `${p.title}_${ep.title}`;
+                const isRead = readEpisodes.has(epId);
+                
                 const item = document.createElement('div');
-                item.className = 'episode-list-item';
+                item.className = `episode-list-item ${isRead ? 'is-read-text' : ''}`;
                 item.onclick = () => {
                     const cover = ep.image || p.image;
                     document.getElementById('miniPlayer').classList.remove('is-empty');
@@ -257,7 +281,26 @@
                     PlayerCore.play(ep.audioUrl);
                     window.updatePlayIcons(true);
                 };
+
+                const statusBtn = document.createElement('div');
+                statusBtn.className = `read-status-btn ${isRead ? 'is-read' : ''}`;
+                statusBtn.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>`;
+                statusBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (readEpisodes.has(epId)) {
+                        readEpisodes.delete(epId);
+                        statusBtn.classList.remove('is-read');
+                        item.classList.remove('is-read-text');
+                    } else {
+                        readEpisodes.add(epId);
+                        statusBtn.classList.add('is-read');
+                        item.classList.add('is-read-text');
+                    }
+                    localStorage.setItem('read_episodes', JSON.stringify(Array.from(readEpisodes)));
+                };
+
                 item.innerHTML = `<img class="ep-list-cover" src="${ep.image || p.image}"><div class="ep-list-info"><div class="ep-list-title">${ep.title}</div><div class="ep-list-meta">播放单集</div></div>`;
+                item.appendChild(statusBtn);
                 list.appendChild(item);
             });
         };
