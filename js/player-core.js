@@ -12,49 +12,49 @@ export const PlayerCore = {
         if (playPromise !== undefined) {
             playPromise.then(() => {
                 this.audio.playbackRate = currentRate;
-                this.forceSystemSync("playing");
+                this.updateSystemSession("playing");
             }).catch(error => console.error("Playback Error:", error));
         }
 
         this.audio.onloadedmetadata = () => {
-            this.forceSystemSync();
+            this.updateSystemSession();
         };
 
         this.audio.ontimeupdate = () => {
             const cur = this.audio.currentTime;
             const dur = this.audio.duration;
-            const currentStr = this.format(cur);
-            const totalStr = this.format(dur);
-            const pct = (cur / dur) * 100 || 0;
-            
-            if (this._onTimeUpdate) this._onTimeUpdate(pct, currentStr, totalStr);
-            // 正常播放期间完全交给系统自己走，不进行任何干预，防止竞争
+            if (this._onTimeUpdate) {
+                this._onTimeUpdate((cur / dur) * 100 || 0, this.format(cur), this.format(dur));
+            }
+            // 苹果策略：正常播放中，绝不主动调用 setPositionState，让系统自行预测计时
         };
 
-        // 核心修复：跳转状态的原子化同步
-        this.audio.onplay = () => this.forceSystemSync("playing");
-        this.audio.onpause = () => this.forceSystemSync("paused");
-        
-        // 当跳转完成时，采用“先停再播”的欺骗策略来强制校准三星系统
-        this.audio.onseeked = () => {
+        // 核心修复：监听跳转事件
+        // 当跳转发生时，我们需要执行一个“彻底重置”操作
+        this.audio.onseeking = () => {
+            // 跳转中，先告诉系统我们停了，防止系统计时器继续往前跑导致偏差
             if ('mediaSession' in navigator) {
-                // 1. 瞬间声明暂停，清空系统组件的计时器预测
                 navigator.mediaSession.playbackState = "paused";
-                
-                // 2. 延迟 10 毫秒后再发送正确的位置和状态
-                setTimeout(() => {
-                    const isPaused = this.audio.paused;
-                    this.forceSystemSync(isPaused ? "paused" : "playing");
-                }, 10);
             }
         };
+
+        this.audio.onseeked = () => {
+            // 跳转结束，强制重新同步
+            // 增加 20ms 延迟是为了确保安卓底层音频驱动已经完成了 buffer 的更新
+            setTimeout(() => {
+                this.updateSystemSession(this.audio.paused ? "paused" : "playing");
+            }, 20);
+        };
+
+        this.audio.onplay = () => this.updateSystemSession("playing");
+        this.audio.onpause = () => this.updateSystemSession("paused");
     },
 
     /**
-     * 强力同步函数：
-     * 针对三星系统，确保每一次 positionState 更新都伴随着明确的速率声明
+     * 终极同步方案
+     * 针对三星系统：每次同步都重新设置完整的状态包，并强制触发系统的 UI 刷新
      */
-    forceSystemSync(state = null) {
+    updateSystemSession(state = null) {
         if (!('mediaSession' in navigator)) return;
 
         if (state) {
@@ -66,17 +66,17 @@ export const PlayerCore = {
 
         if (dur && !isNaN(dur) && dur > 0) {
             try {
-                // 边界保护：三星在接近结束时同步容易报错归零
-                const safePos = Math.max(0, Math.min(cur, dur - 0.2));
-                
+                // 苹果式精准同步：
+                // 1. 确保位置不溢出
+                // 2. 必须显式传递 playbackRate，即使它是 1.0
+                // 3. 使用 Math.floor 减少浮点数传递，防止系统精度计算导致的归零
                 navigator.mediaSession.setPositionState({
                     duration: dur,
-                    playbackPosition: safePos,
+                    playbackPosition: Math.min(cur, dur - 0.1),
                     playbackRate: this.audio.playbackRate || 1.0
                 });
             } catch (e) {
-                // 捕获可能由于音频未完全 Ready 导致的调用异常
-                console.warn("MediaSession PositionState error:", e);
+                console.warn("MediaSession update error:", e);
             }
         }
     },
@@ -89,21 +89,17 @@ export const PlayerCore = {
                 artwork: [
                     { src: cover, sizes: '96x96' },
                     { src: cover, sizes: '128x128' },
+                    { src: cover, sizes: '192x192' },
+                    { src: cover, sizes: '256x256' },
                     { src: cover, sizes: '512x512' }
                 ]
             });
 
-            // 系统回调处理
-            navigator.mediaSession.setActionHandler('play', () => {
-                this.audio.play();
-                if(window.updatePlayIcons) window.updatePlayIcons(true);
-            });
-            navigator.mediaSession.setActionHandler('pause', () => {
-                this.audio.pause();
-                if(window.updatePlayIcons) window.updatePlayIcons(false);
-            });
+            // 注册系统 Action 控制
+            navigator.mediaSession.setActionHandler('play', () => { this.audio.play(); });
+            navigator.mediaSession.setActionHandler('pause', () => { this.audio.pause(); });
             
-            // 系统组件内的快进/快退，直接改变 currentTime 触发 onseeked
+            // 系统组件内的跳转：同样依赖 audio 对象的事件回调进行同步
             navigator.mediaSession.setActionHandler('seekbackward', () => {
                 this.audio.currentTime = Math.max(0, this.audio.currentTime - 15);
             });
@@ -111,11 +107,9 @@ export const PlayerCore = {
                 this.audio.currentTime = Math.min(this.audio.duration, this.audio.currentTime + 15);
             });
             
-            // 系统组件进度条拖动
             navigator.mediaSession.setActionHandler('seekto', (details) => {
                 if (details.seekTime !== undefined) {
                     this.audio.currentTime = details.seekTime;
-                    // 跳转逻辑会由 onseeked 自动接管并同步
                 }
             });
         }
@@ -130,9 +124,8 @@ export const PlayerCore = {
 
     seek(pct) {
         if (this.audio.duration) {
-            const targetTime = (pct / 100) * this.audio.duration;
-            this.audio.currentTime = targetTime;
-            // 网页端操作同样会触发 onseeked
+            // 直接修改 currentTime，触发 onseeking 和 onseeked 逻辑
+            this.audio.currentTime = (pct / 100) * this.audio.duration;
         }
     },
 
