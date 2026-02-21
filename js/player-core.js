@@ -9,100 +9,123 @@ export const PlayerCore = {
     audio: sysAudio,
     _onTimeUpdate: null,
 
+    // 播放指定 URL
     play(url) {
         if (!url) return;
+
+        // 记住当前倍速（如果有）
         const currentRate = this.audio.playbackRate;
         this.audio.src = url;
-        
+
         const playPromise = this.audio.play();
         if (playPromise !== undefined) {
-            playPromise.then(() => {
-                this.audio.playbackRate = currentRate;
-                this._updateMediaSessionState();
-            }).catch(error => console.error("Playback Error:", error));
+            playPromise
+                .then(() => {
+                    // 播放成功后恢复倍速
+                    this.audio.playbackRate = currentRate;
+                    this._updateMediaSession();
+                })
+                .catch(error => console.error("Playback Error:", error));
         }
 
-        this.audio.onloadedmetadata = () => this._updateMediaSessionState();
-        
+        // 元数据加载完成后更新 MediaSession
+        this.audio.onloadedmetadata = () => {
+            this._updateMediaSession();
+        };
+
+        // 时间更新时同步给 UI 和 MediaSession
         this.audio.ontimeupdate = () => {
             const cur = this.audio.currentTime;
             const dur = this.audio.duration;
             if (this._onTimeUpdate) {
                 this._onTimeUpdate((cur / dur) * 100 || 0, this.format(cur), this.format(dur));
             }
-            // 传入当前获取到的精确值，避免再次读取 this.audio.currentTime 可能导致的延迟
-            this._updateMediaSessionState(dur, cur);
+            this._updateMediaSession();
         };
 
-        this.audio.onplay = () => this._updateMediaSessionState();
-        this.audio.onpause = () => this._updateMediaSessionState();
-        this.audio.onseeked = () => this._updateMediaSessionState();
-        this.audio.onratechange = () => this._updateMediaSessionState();
+        // 播放状态变化时更新 MediaSession
+        this.audio.onplay = () => this._updateMediaSession();
+        this.audio.onpause = () => this._updateMediaSession();
+        this.audio.onseeked = () => this._updateMediaSession();
+        this.audio.onratechange = () => this._updateMediaSession();
+        this.audio.onended = () => this._updateMediaSession();
     },
 
-    // 统一的 MediaSession 更新方法，可接收外部传入的 duration 和 currentTime
-    _updateMediaSessionState(dur, cur) {
+    // 统一更新 MediaSession 状态和位置
+    _updateMediaSession() {
         if (!('mediaSession' in navigator)) return;
 
-        // 如果未传入，则从 audio 元素获取
-        const duration = (dur !== undefined) ? dur : this.audio.duration;
-        const current = (cur !== undefined) ? cur : this.audio.currentTime;
-
+        // 更新播放状态
         navigator.mediaSession.playbackState = this.audio.paused ? "paused" : "playing";
 
-        // 确保 duration 和 current 都是有限数字，且 duration > 0
-        if (duration && Number.isFinite(duration) && duration > 0 && Number.isFinite(current)) {
+        const dur = this.audio.duration;
+        const cur = this.audio.currentTime;
+
+        // 必须保证 duration 是有效的正数，currentTime 是有效数字
+        if (dur && Number.isFinite(dur) && dur > 0 && Number.isFinite(cur)) {
             try {
                 navigator.mediaSession.setPositionState({
-                    duration: duration,
-                    playbackPosition: current,
+                    duration: dur,
+                    playbackPosition: Math.max(0, cur), // 确保非负
                     playbackRate: this.audio.playbackRate || 1.0
                 });
             } catch (error) {
-                console.warn("MediaSession API Error:", error);
+                console.warn("MediaSession setPositionState error:", error);
             }
+        } else {
+            // 如果 duration 无效（例如流媒体尚未加载完成），暂时不设置位置
+            // 可以忽略，后续 timeupdate 会再次尝试
         }
     },
 
-    // 对外公开的 updateMediaSessionState 方法，内部调用新方法
-    updateMediaSessionState() {
-        this._updateMediaSessionState();
-    },
-
+    // 设置 Metadata 和事件处理器（只需调用一次）
     updateMetadata(title, artist, cover) {
-        if ('mediaSession' in navigator) {
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: title,
-                artist: artist,
-                artwork: [
-                    { src: cover, sizes: '96x96' },
-                    { src: cover, sizes: '128x128' },
-                    { src: cover, sizes: '256x256' },
-                    { src: cover, sizes: '512x512' }
-                ]
-            });
+        if (!('mediaSession' in navigator)) return;
 
-            navigator.mediaSession.setActionHandler('play', () => { this.audio.play(); });
-            navigator.mediaSession.setActionHandler('pause', () => { this.audio.pause(); });
-            navigator.mediaSession.setActionHandler('seekbackward', () => {
-                this.audio.currentTime = Math.max(0, this.audio.currentTime - 15);
-            });
-            navigator.mediaSession.setActionHandler('seekforward', () => {
-                this.audio.currentTime = Math.min(this.audio.duration, this.audio.currentTime + 15);
-            });
-            navigator.mediaSession.setActionHandler('seekto', (details) => {
-                if (details.seekTime !== undefined && Number.isFinite(details.seekTime)) {
-                    this.audio.currentTime = details.seekTime;
-                }
-            });
-        }
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: title,
+            artist: artist,
+            artwork: [
+                { src: cover, sizes: '96x96' },
+                { src: cover, sizes: '128x128' },
+                { src: cover, sizes: '256x256' },
+                { src: cover, sizes: '512x512' }
+            ]
+        });
+
+        // 设置控制动作（只绑定一次，重复绑定也无妨）
+        navigator.mediaSession.setActionHandler('play', () => { this.audio.play(); });
+        navigator.mediaSession.setActionHandler('pause', () => { this.audio.pause(); });
+        navigator.mediaSession.setActionHandler('seekbackward', () => {
+            this.audio.currentTime = Math.max(0, this.audio.currentTime - 15);
+        });
+        navigator.mediaSession.setActionHandler('seekforward', () => {
+            this.audio.currentTime = Math.min(this.audio.duration, this.audio.currentTime + 15);
+        });
+        navigator.mediaSession.setActionHandler('seekto', (details) => {
+            if (details.seekTime !== undefined && Number.isFinite(details.seekTime)) {
+                this.audio.currentTime = details.seekTime;
+            }
+        });
     },
 
-    onTimeUpdate(cb) { this._onTimeUpdate = cb; },
+    // 手动触发 MediaSession 更新（供外部调用，例如播放结束后）
+    updateMediaSessionState() {
+        this._updateMediaSession();
+    },
+
+    onTimeUpdate(cb) {
+        this._onTimeUpdate = cb;
+    },
 
     toggle() {
-        if (this.audio.paused) { this.audio.play(); return true; }
-        else { this.audio.pause(); return false; }
+        if (this.audio.paused) {
+            this.audio.play();
+            return true;
+        } else {
+            this.audio.pause();
+            return false;
+        }
     },
 
     seek(pct) {
