@@ -363,15 +363,6 @@
                 document.getElementById('currentTime').innerText = cur;
                 document.getElementById('durationTime').innerText = tot;
             });
-
-            document.addEventListener('touchmove', (e) => {
-                if (e.target.closest('.main-layout') || e.target.closest('.modal-content') || e.target.closest('.desc-full-text')) {
-                    return;
-                }
-                if (document.body.classList.contains('modal-open')) {
-                    e.preventDefault();
-                }
-            }, { passive: false });
         });
     </script>
 </body>
