@@ -9,11 +9,9 @@ export const PlayerCore = {
     audio: sysAudio,
     _onTimeUpdate: null,
 
-    // 播放指定 URL
     play(url) {
         if (!url) return;
 
-        // 记住当前倍速（如果有）
         const currentRate = this.audio.playbackRate;
         this.audio.src = url;
 
@@ -21,29 +19,26 @@ export const PlayerCore = {
         if (playPromise !== undefined) {
             playPromise
                 .then(() => {
-                    // 播放成功后恢复倍速
                     this.audio.playbackRate = currentRate;
                     this._updateMediaSession();
                 })
                 .catch(error => console.error("Playback Error:", error));
         }
 
-        // 元数据加载完成后更新 MediaSession
         this.audio.onloadedmetadata = () => {
             this._updateMediaSession();
         };
 
-        // 时间更新时同步给 UI 和 MediaSession
         this.audio.ontimeupdate = () => {
             const cur = this.audio.currentTime;
             const dur = this.audio.duration;
             if (this._onTimeUpdate) {
                 this._onTimeUpdate((cur / dur) * 100 || 0, this.format(cur), this.format(dur));
             }
-            this._updateMediaSession();
+            // 使用从事件中获取的精确值更新 MediaSession
+            this._updateMediaSession(dur, cur);
         };
 
-        // 播放状态变化时更新 MediaSession
         this.audio.onplay = () => this._updateMediaSession();
         this.audio.onpause = () => this._updateMediaSession();
         this.audio.onseeked = () => this._updateMediaSession();
@@ -51,34 +46,31 @@ export const PlayerCore = {
         this.audio.onended = () => this._updateMediaSession();
     },
 
-    // 统一更新 MediaSession 状态和位置
-    _updateMediaSession() {
+    // 统一的 MediaSession 更新方法，可接收外部传入的 duration 和 currentTime
+    _updateMediaSession(dur, cur) {
         if (!('mediaSession' in navigator)) return;
 
         // 更新播放状态
         navigator.mediaSession.playbackState = this.audio.paused ? "paused" : "playing";
 
-        const dur = this.audio.duration;
-        const cur = this.audio.currentTime;
+        // 如果传入了 dur 和 cur 则使用，否则从 audio 读取
+        const duration = (dur !== undefined) ? dur : this.audio.duration;
+        const current = (cur !== undefined) ? cur : this.audio.currentTime;
 
-        // 必须保证 duration 是有效的正数，currentTime 是有效数字
-        if (dur && Number.isFinite(dur) && dur > 0 && Number.isFinite(cur)) {
+        // 必须保证 duration 是有效的正数，current 是有效数字
+        if (duration && Number.isFinite(duration) && duration > 0 && Number.isFinite(current)) {
             try {
                 navigator.mediaSession.setPositionState({
-                    duration: dur,
-                    playbackPosition: Math.max(0, cur), // 确保非负
+                    duration: duration,
+                    playbackPosition: Math.max(0, current), // 确保非负
                     playbackRate: this.audio.playbackRate || 1.0
                 });
             } catch (error) {
                 console.warn("MediaSession setPositionState error:", error);
             }
-        } else {
-            // 如果 duration 无效（例如流媒体尚未加载完成），暂时不设置位置
-            // 可以忽略，后续 timeupdate 会再次尝试
         }
     },
 
-    // 设置 Metadata 和事件处理器（只需调用一次）
     updateMetadata(title, artist, cover) {
         if (!('mediaSession' in navigator)) return;
 
@@ -93,7 +85,7 @@ export const PlayerCore = {
             ]
         });
 
-        // 设置控制动作（只绑定一次，重复绑定也无妨）
+        // 设置控制动作
         navigator.mediaSession.setActionHandler('play', () => { this.audio.play(); });
         navigator.mediaSession.setActionHandler('pause', () => { this.audio.pause(); });
         navigator.mediaSession.setActionHandler('seekbackward', () => {
@@ -109,7 +101,7 @@ export const PlayerCore = {
         });
     },
 
-    // 手动触发 MediaSession 更新（供外部调用，例如播放结束后）
+    // 手动触发 MediaSession 更新（供外部调用）
     updateMediaSessionState() {
         this._updateMediaSession();
     },
