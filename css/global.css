@@ -14,7 +14,7 @@
     box-sizing: border-box;
 }
 
-/* 核心优化：全量隐藏丑陋的系统滚动条 */
+/* 核心优化：全量隐藏丑陋的系统滚动条，提升 App 感 */
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; -ms-overflow-style: none; }
 
@@ -41,6 +41,55 @@ body {
     flex-direction: column; 
     overflow: hidden; 
     position: relative; 
+    background: transparent !important;
+}
+
+.header { 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 80px; 
+    padding-top: env(safe-area-inset-top); 
+    background: var(--nav-bg) !important; 
+    backdrop-filter: blur(25px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
+    z-index: 1000;
+    border-bottom: 0.5px solid rgba(0,0,0,0.08);
+    display: flex; 
+    align-items: center; 
+}
+
+.header-content {
+    height: 80px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between;
+    width: 100%; 
+    padding: 0 24px;
+}
+
+.header-left { display: flex; align-items: center; flex: 1; overflow: hidden; }
+.brand-wrapper { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.brand-icon-pro { width: 36px; height: 36px; border-radius: 9px; background: linear-gradient(135deg, #af52de, #5e5ce6); flex-shrink: 0; }
+#brandTitle { font-size: 20px; font-weight: 800; letter-spacing: 0.5px; margin: 0; }
+
+.header-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.action-btn {
+    width: 40px; height: 40px; 
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; 
+    color: var(--text-main); 
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0,0,0,0.05);
+    cursor: pointer; 
+    transition: all 0.3s ease;
+}
+
+body.edit-mode #editBtn {
+    color: var(--danger);
+    border-color: var(--danger);
 }
 
 .content { 
@@ -76,7 +125,6 @@ body {
 .card-info h3 { font-size: 14px; margin: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-info p { font-size: 11px; color: var(--text-sub); margin-top: 4px; }
 
-/* 二级菜单容器 */
 .modal-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0,0,0,0.4); 
@@ -88,7 +136,7 @@ body {
 .episode-modal {
     background: #fff; 
     width: 100%; max-width: 600px; 
-    height: calc(100svh - 40px - env(safe-area-inset-top)); 
+    height: calc(100svh - 40px - env(safe-area-inset-top)); /* 关键修复：防止超出屏幕 */
     border-radius: 24px 24px 0 0; 
     display: flex; flex-direction: column;
     box-shadow: 0 -10px 40px rgba(0,0,0,0.2); 
@@ -114,19 +162,19 @@ body {
 .modal-info-title { font-size: 22px; font-weight: 800; margin: 0 0 6px 0; color: var(--text-main); padding: 0 10px; }
 .modal-info-author { font-size: 14px; font-weight: 600; color: var(--accent); margin-bottom: 16px; }
 
-/* 简介区域样式 */
+/* 简介展开逻辑 */
 .modal-info-desc-container { width: 100%; padding: 0 20px; position: relative; }
 .modal-info-desc { 
     font-size: 13px; color: var(--text-sub); line-height: 1.6; margin: 0; 
     display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; 
     overflow: hidden; text-align: left;
-    transition: max-height 0.3s ease;
+    transition: all 0.3s ease;
 }
 .modal-info-desc.is-expanded { -webkit-line-clamp: unset; }
 .desc-toggle-btn { 
     background: none; border: none; color: var(--accent); 
     font-size: 13px; font-weight: 700; padding: 8px 0; 
-    cursor: pointer; display: none; margin: 0 auto; /* 默认隐藏 */
+    cursor: pointer; display: block; margin: 0 auto;
 }
 
 .episode-list-container { padding: 10px 16px 60px; }
