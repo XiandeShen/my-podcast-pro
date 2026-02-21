@@ -112,16 +112,39 @@ body {
     }
 }
 
-.podcast-card { position: relative; cursor: pointer; transition: 0.4s cubic-bezier(0.2, 1, 0.2, 1); }
+/* 播客卡片基础样式 */
+.podcast-card { 
+    position: relative; 
+    cursor: pointer; 
+    transition: transform 0.4s cubic-bezier(0.2, 1, 0.2, 1);
+    will-change: transform;
+}
+
 .podcast-card::before {
     content: ""; display: block; aspect-ratio: 1/1;
     background-image: var(--card-cover); background-size: cover; background-position: center;
     border-radius: var(--radius-card); 
     box-shadow: 0 4px 12px rgba(0,0,0,0.05), 0 10px 25px rgba(0,0,0,0.08); 
     margin-bottom: 12px;
+    transition: transform 0.4s cubic-bezier(0.2, 1, 0.2, 1), box-shadow 0.4s ease;
 }
-/* 优化：仅在非编辑模式下允许 hover 效果，防止退出时的跳动 */
-body:not(.edit-mode) .podcast-card:hover { transform: translateY(-6px); }
+
+/* PC 端悬停效果：卡片浮起，封面放大 */
+@media (hover: hover) {
+    .podcast-card:hover {
+        transform: translateY(-8px);
+    }
+    .podcast-card:hover::before {
+        transform: scale(1.02);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+    }
+}
+
+/* 移动端/点击反馈：按压缩放 */
+.podcast-card:active {
+    transform: scale(0.96);
+    transition: transform 0.1s ease;
+}
 
 .card-info h3 { font-size: 14px; margin: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-info p { font-size: 11px; color: var(--text-sub); margin-top: 4px; }
@@ -155,8 +178,19 @@ body:not(.edit-mode) .podcast-card:hover { transform: translateY(-6px); }
 
 .modal-content { flex: 1; overflow-y: auto; padding: 10px 16px; background: transparent !important; }
 
-.episode-list-item { display: flex; align-items: center; padding: 12px; border-radius: 14px; cursor: pointer; transition: background 0.2s ease; }
-.episode-list-item:hover { background: rgba(0,0,0,0.03); }
+.episode-list-item { 
+    display: flex; 
+    align-items: center; 
+    padding: 12px; 
+    border-radius: 14px; 
+    cursor: pointer; 
+    transition: all 0.2s ease; 
+}
+@media (hover: hover) {
+    .episode-list-item:hover { background: rgba(0,0,0,0.05); transform: translateX(4px); }
+}
+.episode-list-item:active { background: rgba(0,0,0,0.08); transform: scale(0.98); }
+
 .ep-list-cover { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; margin-right: 12px; }
 .ep-list-info { flex: 1; overflow: hidden; }
 .ep-list-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
