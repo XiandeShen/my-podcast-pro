@@ -1,6 +1,15 @@
 // js/player-core.js
+
+// 核心突破点：创建 audio 元素并必须将其塞入 DOM 树中
+// 这是解决安卓/iOS系统组件“时间归零”、“进度不同步”的终极物理方案
+const sysAudio = new Audio();
+sysAudio.id = "core-audio-player";
+sysAudio.style.display = "none";
+document.body.appendChild(sysAudio);
+
 export const PlayerCore = {
-    audio: new Audio(),
+    // 绑定挂载到 DOM 的实体元素
+    audio: sysAudio,
     _onTimeUpdate: null,
 
     play(url) {
@@ -12,64 +21,50 @@ export const PlayerCore = {
         if (playPromise !== undefined) {
             playPromise.then(() => {
                 this.audio.playbackRate = currentRate;
-                this.syncAll("playing");
+                this.updateMediaSessionState();
             }).catch(error => console.error("Playback Error:", error));
         }
 
-        this.audio.onloadedmetadata = () => {
-            this.syncAll();
-        };
-
+        // 统一交给浏览器原生事件去驱动系统组件
+        this.audio.onloadedmetadata = () => this.updateMediaSessionState();
+        
         this.audio.ontimeupdate = () => {
             const cur = this.audio.currentTime;
             const dur = this.audio.duration;
             if (this._onTimeUpdate) {
                 this._onTimeUpdate((cur / dur) * 100 || 0, this.format(cur), this.format(dur));
             }
-            // 重点：正常播放中，绝不调用 setPositionState，让三星系统自己走
         };
 
-        // 核心修复：当音频因为任何原因（包括手动点击、系统操作）暂停或播放时
-        this.audio.onplay = () => this.syncAll("playing");
-        this.audio.onpause = () => this.syncAll("paused");
-        
-        // 跳转完成时
-        this.audio.onseeked = () => {
-            this.syncAll(this.audio.paused ? "paused" : "playing");
-        };
+        // 监听原生动作进行同步
+        this.audio.onplay = () => this.updateMediaSessionState();
+        this.audio.onpause = () => this.updateMediaSessionState();
+        this.audio.onseeked = () => this.updateMediaSessionState();
+        this.audio.onratechange = () => this.updateMediaSessionState();
     },
 
-    /**
-     * 终极同步方案：syncAll
-     * 针对三星系统暂停归零的修复策略：
-     * 1. 强制将 playbackState 和 positionState 在同一个执行周期内发出
-     * 2. 暂停时，明确告诉系统“停留在这一秒”，不给系统自动归零的机会
-     */
-    syncAll(state = null) {
+    // 纯粹的同步函数
+    updateMediaSessionState() {
         if (!('mediaSession' in navigator)) return;
 
-        // 1. 设置状态
-        if (state) {
-            navigator.mediaSession.playbackState = state;
-        }
+        // 同步播放状态
+        navigator.mediaSession.playbackState = this.audio.paused ? "paused" : "playing";
 
         const dur = this.audio.duration;
         const cur = this.audio.currentTime;
 
-        // 2. 只有在有有效时长时才同步
-        if (dur && !isNaN(dur) && dur > 0) {
+        // 核心保护：很多播客 RSS 返回的时长最初可能是 Infinity 或 NaN
+        // 如果把这些非法值传给三星系统，系统组件就会崩溃并归零。
+        // 所以必须用 Number.isFinite 确保是正常的数字
+        if (dur && Number.isFinite(dur) && dur > 0 && Number.isFinite(cur)) {
             try {
-                // 苹果式防御：确保不等于总长度，确保不为负数
-                const safePos = Math.max(0, Math.min(cur, dur - 0.2));
-                
-                // 核心：setPositionState 必须在此时刻被调用
                 navigator.mediaSession.setPositionState({
                     duration: dur,
-                    playbackPosition: safePos,
+                    playbackPosition: cur,
                     playbackRate: this.audio.playbackRate || 1.0
                 });
-            } catch (e) {
-                console.warn("MediaSession Sync Failed:", e);
+            } catch (error) {
+                console.warn("MediaSession API Error:", error);
             }
         }
     },
@@ -82,25 +77,22 @@ export const PlayerCore = {
                 artwork: [
                     { src: cover, sizes: '96x96' },
                     { src: cover, sizes: '128x128' },
-                    { src: cover, sizes: '192x192' },
                     { src: cover, sizes: '256x256' },
                     { src: cover, sizes: '512x512' }
                 ]
             });
 
-            // 控制回调：仅处理逻辑，不直接操作 MediaSession 状态，由 audio 事件统一触发 syncAll
+            // 所有的控制均只操作 DOM 元素，由 DOM 元素的 onplay/onpause 事件自动回调去同步系统
             navigator.mediaSession.setActionHandler('play', () => { this.audio.play(); });
             navigator.mediaSession.setActionHandler('pause', () => { this.audio.pause(); });
-            
             navigator.mediaSession.setActionHandler('seekbackward', () => {
                 this.audio.currentTime = Math.max(0, this.audio.currentTime - 15);
             });
             navigator.mediaSession.setActionHandler('seekforward', () => {
                 this.audio.currentTime = Math.min(this.audio.duration, this.audio.currentTime + 15);
             });
-            
             navigator.mediaSession.setActionHandler('seekto', (details) => {
-                if (details.seekTime !== undefined) {
+                if (details.seekTime !== undefined && Number.isFinite(details.seekTime)) {
                     this.audio.currentTime = details.seekTime;
                 }
             });
@@ -115,13 +107,13 @@ export const PlayerCore = {
     },
 
     seek(pct) {
-        if (this.audio.duration) {
+        if (this.audio.duration && Number.isFinite(this.audio.duration)) {
             this.audio.currentTime = (pct / 100) * this.audio.duration;
         }
     },
 
     format(s) {
-        if (isNaN(s)) return "0:00";
+        if (isNaN(s) || !Number.isFinite(s)) return "0:00";
         const m = Math.floor(s / 60);
         const sec = Math.floor(s % 60);
         return `${m}:${sec < 10 ? '0' : ''}${sec}`;
