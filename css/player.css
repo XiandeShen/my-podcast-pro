@@ -7,18 +7,18 @@
     width: 92%; 
     max-width: 600px; 
     height: 64px; 
-    background: rgba(255, 255, 255, 0.85); 
+    background: var(--nav-bg); 
     backdrop-filter: blur(25px) saturate(180%);
     -webkit-backdrop-filter: blur(25px) saturate(180%);
     border-radius: 16px; 
     border: none; 
     box-shadow: 
-        0 0 0 0.5px rgba(0, 0, 0, 0.05),
-        0 10px 30px rgba(0, 0, 0, 0.1),
-        inset 0 0 0 0.5px rgba(255, 255, 255, 0.5);
+        0 0 0 0.5px var(--border-light),
+        0 10px 30px rgba(0, 0, 0, 0.2),
+        inset 0 0 0 0.5px rgba(255, 255, 255, 0.1);
     z-index: 1000;
     display: flex; flex-direction: column; overflow: hidden; cursor: pointer;
-    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.3s ease;
 }
 
 .mini-player:active { transform: translateX(-50%) scale(0.97); }
@@ -27,12 +27,12 @@
 .mini-info { flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; }
 #miniCover { width: 64px; height: 64px; border-radius: 0; object-fit: cover; flex-shrink: 0; margin: 0; }
 .mini-text { min-width: 0; display: flex; flex-direction: column; }
-#miniTitle { font-size: 14px; font-weight: 700; color: #1d1d1f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#miniTitle { font-size: 14px; font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #miniAuthor { font-size: 11px; color: var(--accent); font-weight: 600; }
 .mini-controls { display: flex; align-items: center; gap: 18px; padding-right: 16px; }
-.mini-play-btn { background: none; border: none; cursor: pointer; color: #1d1d1f; padding: 0; display: flex; transition: transform 0.2s ease; }
+.mini-play-btn { background: none; border: none; cursor: pointer; color: var(--text-main); padding: 0; display: flex; transition: transform 0.2s ease; }
 .mini-play-btn:active { transform: scale(0.85); }
-.mini-speed-btn-text { background: none; border: none; color: #86868b; font-size: 13px; font-weight: 700; cursor: pointer; width: 32px; transition: transform 0.2s ease; }
+.mini-speed-btn-text { background: none; border: none; color: var(--text-sub); font-size: 13px; font-weight: 700; cursor: pointer; width: 32px; transition: transform 0.2s ease; }
 .mini-speed-btn-text:active { transform: scale(0.85); }
 
 /* 全屏播放页 Overlay */
