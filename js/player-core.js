@@ -2,6 +2,7 @@
 export const PlayerCore = {
     audio: new Audio(),
     _onTimeUpdate: null,
+    _lastSyncTime: 0, // 记录上次同步给系统的时间戳
 
     play(url) {
         if (!url) return;
@@ -12,54 +13,63 @@ export const PlayerCore = {
         if (playPromise !== undefined) {
             playPromise.then(() => {
                 this.audio.playbackRate = currentRate;
-                this.setSystemState("playing"); // 苹果策略：播放后立即强制声明状态
+                this.syncMediaSession("playing");
             }).catch(error => console.error("Playback Error:", error));
         }
 
-        // 核心修复：监听元数据加载，三星手机需要第一时间知道总时长
         this.audio.onloadedmetadata = () => {
-            this.updateSystemPositionState();
+            this.syncMediaSession();
         };
 
-        // 核心修复：原生事件监听，确保系统组件操作后不丢状态
-        this.audio.onplay = () => this.setSystemState("playing");
-        this.audio.onpause = () => this.setSystemState("paused");
-        this.audio.onseeking = () => this.updateSystemPositionState();
-        this.audio.onseeked = () => this.updateSystemPositionState();
-
+        // 核心优化：减少同步频率，防止三星系统时间轴抖动
         this.audio.ontimeupdate = () => {
-            const current = this.format(this.audio.currentTime);
-            const total = this.format(this.audio.duration);
-            const pct = (this.audio.currentTime / this.audio.duration) * 100 || 0;
-            if (this._onTimeUpdate) this._onTimeUpdate(pct, current, total);
+            const cur = this.audio.currentTime;
+            const dur = this.audio.duration;
+            const currentStr = this.format(cur);
+            const totalStr = this.format(dur);
+            const pct = (cur / dur) * 100 || 0;
             
-            // 苹果策略：正常播放时降低同步频率，但确保在整数秒时强刷一次
-            if ('mediaSession' in navigator && Math.floor(this.audio.currentTime) % 2 === 0) {
-                this.updateSystemPositionState();
+            if (this._onTimeUpdate) this._onTimeUpdate(pct, currentStr, totalStr);
+            
+            // 策略：每 5 秒或进度发生大幅度跳变时才强制同步一次
+            // 平时让系统组件根据 playbackRate 自己走进度
+            if (Math.abs(cur - this._lastSyncTime) > 5) {
+                this.syncMediaSession();
             }
         };
+
+        // 监听底层事件，确保状态转换瞬间同步
+        this.audio.onplay = () => this.syncMediaSession("playing");
+        this.audio.onpause = () => this.syncMediaSession("paused");
+        this.audio.onseeked = () => this.syncMediaSession();
     },
 
-    // 封装状态设置，确保 playbackState 和 positionState 同时更新
-    setSystemState(state) {
-        if ('mediaSession' in navigator) {
+    // 核心同步函数：增加数值保护和频率限制
+    syncMediaSession(state = null) {
+        if (!('mediaSession' in navigator)) return;
+
+        // 如果传入了状态，先更新状态
+        if (state) {
             navigator.mediaSession.playbackState = state;
-            this.updateSystemPositionState();
         }
-    },
 
-    updateSystemPositionState() {
-        if ('mediaSession' in navigator && this.audio.duration && !isNaN(this.audio.duration)) {
+        const dur = this.audio.duration;
+        const cur = this.audio.currentTime;
+
+        if (dur && !isNaN(dur) && dur > 0) {
             try {
-                // 必须严格校验 position 不超过 duration，否则三星系统会重置为 0
-                const pos = Math.min(this.audio.currentTime, this.audio.duration);
+                // 确保数据是干净的浮点数/整数
+                const safePos = Math.max(0, Math.min(cur, dur));
+                
                 navigator.mediaSession.setPositionState({
-                    duration: this.audio.duration,
-                    playbackPosition: pos,
+                    duration: dur,
+                    playbackPosition: safePos,
                     playbackRate: this.audio.playbackRate || 1.0
                 });
+                
+                this._lastSyncTime = safePos;
             } catch (e) {
-                console.warn("MediaSession Sync Failed:", e);
+                console.warn("MediaSession sync error:", e);
             }
         }
     },
@@ -74,36 +84,32 @@ export const PlayerCore = {
                     { src: cover, sizes: '128x128' },
                     { src: cover, sizes: '192x192' },
                     { src: cover, sizes: '256x256' },
-                    { src: cover, sizes: '384x384' },
                     { src: cover, sizes: '512x512' }
                 ]
             });
 
-            // 系统回调处理
-            navigator.mediaSession.setActionHandler('play', () => { 
-                this.audio.play(); 
-                this.setSystemState("playing");
-                if(window.updatePlayIcons) window.updatePlayIcons(true); 
+            // 系统回调：操作后立即执行同步
+            navigator.mediaSession.setActionHandler('play', () => {
+                this.audio.play();
+                if(window.updatePlayIcons) window.updatePlayIcons(true);
             });
-            navigator.mediaSession.setActionHandler('pause', () => { 
-                this.audio.pause(); 
-                this.setSystemState("paused");
-                if(window.updatePlayIcons) window.updatePlayIcons(false); 
+            navigator.mediaSession.setActionHandler('pause', () => {
+                this.audio.pause();
+                if(window.updatePlayIcons) window.updatePlayIcons(false);
             });
-            navigator.mediaSession.setActionHandler('seekbackward', () => { 
-                if(window.seekOffset) window.seekOffset(-15); 
-                this.updateSystemPositionState();
+            navigator.mediaSession.setActionHandler('seekbackward', () => {
+                if(window.seekOffset) window.seekOffset(-15);
+                this.syncMediaSession();
             });
-            navigator.mediaSession.setActionHandler('seekforward', () => { 
-                if(window.seekOffset) window.seekOffset(15); 
-                this.updateSystemPositionState();
+            navigator.mediaSession.setActionHandler('seekforward', () => {
+                if(window.seekOffset) window.seekOffset(15);
+                this.syncMediaSession();
             });
-            
-            // 重点修复：三星系统的 seekto 指令必须带上完整的 position 汇报
             navigator.mediaSession.setActionHandler('seekto', (details) => {
                 if (details.seekTime !== undefined) {
                     this.audio.currentTime = details.seekTime;
-                    this.updateSystemPositionState();
+                    // 跳转后必须立刻同步，且设置一个短暂的“冷却”防止系统回弹
+                    this.syncMediaSession();
                 }
             });
         }
@@ -112,19 +118,19 @@ export const PlayerCore = {
     onTimeUpdate(cb) { this._onTimeUpdate = cb; },
 
     toggle() {
-        if (this.audio.paused) { 
-            this.audio.play(); 
-            return true; 
-        } else { 
-            this.audio.pause(); 
-            return false; 
+        if (this.audio.paused) {
+            this.audio.play();
+            return true;
+        } else {
+            this.audio.pause();
+            return false;
         }
     },
 
     seek(pct) {
         if (this.audio.duration) {
             this.audio.currentTime = (pct / 100) * this.audio.duration;
-            this.updateSystemPositionState();
+            this.syncMediaSession();
         }
     },
 
