@@ -174,8 +174,14 @@
             const state = e.state || {};
             if (state.page === 'player') {
                 document.getElementById('playerOverlay').classList.add('is-active');
+                // 修复：在这里也要确保 body 类正确
+                document.body.classList.add('modal-open');
             } else {
                 document.getElementById('playerOverlay').classList.remove('is-active');
+                // 如果不是详情页，才移除 modal-open
+                if (state.page !== 'podcast-detail') {
+                    document.body.classList.remove('modal-open');
+                }
             }
             if (state.page === 'podcast-detail') {
                 document.getElementById('episodeModalOverlay').style.display = 'flex';
@@ -191,12 +197,15 @@
             if (document.getElementById('miniPlayer').classList.contains('is-empty')) return;
             const currentState = history.state || {};
             document.getElementById('playerOverlay').classList.add('is-active');
+            // 核心修复：打开全屏播放器时，锁定 body 并隐藏底层
+            document.body.classList.add('modal-open');
             history.pushState({ ...currentState, page: 'player' }, '');
         };
 
         window.closePlayer = () => {
             if (document.getElementById('playerOverlay').classList.contains('is-active')) {
                 history.back();
+                // 核心修复：逻辑交回 popstate 处理，会自动移除 modal-open
             }
         };
 
