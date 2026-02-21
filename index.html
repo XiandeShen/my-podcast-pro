@@ -8,18 +8,16 @@
     <link rel="stylesheet" href="css/global.css">
     <link rel="stylesheet" href="css/player.css">
     <style>
-        /* 二级页面顶部边距优化 */
         .modal-hero {
             padding-top: calc(80px + env(safe-area-inset-top));
             padding-bottom: 20px;
         }
         .modal-content {
             padding-top: 0;
-            /* 适配固定底部播放条 */
             padding-bottom: calc(90px + env(safe-area-inset-bottom));
         }
 
-        /* 核心修改：固定主页头部 */
+        /* 优化主页头部：移除 margin-left/right 负值，改用更稳定的 padding 方案 */
         .inline-header {
             position: sticky;
             top: 0;
@@ -28,25 +26,16 @@
             backdrop-filter: blur(20px) saturate(180%);
             -webkit-backdrop-filter: blur(20px) saturate(180%);
             padding: calc(10px + env(safe-area-inset-top)) 15px 10px; 
-            margin: 0 -15px; 
-            width: calc(100% + 30px);
+            width: 100%;
         }
         
-        .main-layout {
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            padding: 0 15px; 
-        }
-
         #mainGrid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
             gap: 15px; 
-            /* 适配固定底部播放条，增加底部间距 */
             padding: 15px 0 calc(90px + env(safe-area-inset-bottom)) 0 !important; 
         }
 
-        /* 已读标记样式 */
         .read-status-btn {
             padding: 10px;
             color: #ccc;
@@ -66,25 +55,25 @@
 </head>
 <body>
     <div class="app-container">
-        <section class="main-layout" id="scrollContainer">
-            <div class="inline-header">
-                <div class="header-left">
-                    <div class="brand-wrapper" onclick="location.reload()">
-                        <div class="brand-icon-pro">
-                            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="podGradientHeader" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#AF52FF;stop-opacity:1" /><stop offset="100%" style="stop-color:#5C5CFF;stop-opacity:1" /></linearGradient></defs><rect width="200" height="200" rx="45" fill="url(#podGradientHeader)"/><g fill="white"><rect x="55" y="85" width="12" height="30" rx="6" opacity="0.6"/><rect x="75" y="70" width="12" height="60" rx="6" opacity="0.8"/><rect x="95" y="55" width="12" height="90" rx="6"/><rect x="115" y="70" width="12" height="60" rx="6" opacity="0.8"/><rect x="135" y="85" width="12" height="30" rx="6" opacity="0.6"/></g></svg>
-                        </div>
-                        <h1 id="brandTitle">PODCAST</h1>
+        <div class="inline-header">
+            <div class="header-left">
+                <div class="brand-wrapper" onclick="location.reload()">
+                    <div class="brand-icon-pro">
+                        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="podGradientHeader" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#AF52FF;stop-opacity:1" /><stop offset="100%" style="stop-color:#5C5CFF;stop-opacity:1" /></linearGradient></defs><rect width="200" height="200" rx="45" fill="url(#podGradientHeader)"/><g fill="white"><rect x="55" y="85" width="12" height="30" rx="6" opacity="0.6"/><rect x="75" y="70" width="12" height="60" rx="6" opacity="0.8"/><rect x="95" y="55" width="12" height="90" rx="6"/><rect x="115" y="70" width="12" height="60" rx="6" opacity="0.8"/><rect x="135" y="85" width="12" height="30" rx="6" opacity="0.6"/></g></svg>
                     </div>
-                </div>
-                <div class="header-actions">
-                    <button class="action-btn" id="editBtn"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
-                    <label class="action-btn" for="rssFileInput" style="cursor: pointer;">
-                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        <input type="file" id="rssFileInput" accept=".rss,.xml" multiple style="display:none">
-                    </label>
+                    <h1 id="brandTitle">PODCAST</h1>
                 </div>
             </div>
+            <div class="header-actions">
+                <button class="action-btn" id="editBtn"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+                <label class="action-btn" for="rssFileInput" style="cursor: pointer;">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <input type="file" id="rssFileInput" accept=".rss,.xml" multiple style="display:none">
+                </label>
+            </div>
+        </div>
 
+        <section class="main-layout" id="scrollContainer">
             <main class="content" id="mainGrid"></main>
         </section>
 
@@ -149,17 +138,22 @@
             <div class="p-cover-wrap"><img id="playerCover" src=""></div>
             <div class="p-controls-area">
                 <div class="p-info">
-                    <div class="p-info-text"><h2 id="playerTitle">未播放</h2><p id="playerAuthor">作者</p></div>
-                    <button class="p-speed-btn" id="fullSpeedBtn" onclick="window.toggleSpeed()">1.0x</button>
+                    <div class="p-info-text">
+                        <h2 id="playerTitle">未播放</h2>
+                        <p id="playerAuthor">作者</p>
+                    </div>
                 </div>
                 <div class="p-progress-wrap">
                     <input type="range" class="p-slider" value="0" id="progressRange">
                     <div class="p-time-info"><span id="currentTime">0:00</span><span id="durationTime">0:00</span></div>
                 </div>
-                <div class="p-controls">
-                    <button class="p-btn-sec" onclick="window.seekOffset(-15)"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2.5 2v6h6M2.66 15.57a10 10 0 1 0 .57-8.38"/><text x="12" y="15.5" font-size="7" font-weight="900" text-anchor="middle" fill="currentColor" stroke="none">15</text></svg></button>
-                    <button class="p-btn-play-large" id="mainPlayBtn" onclick="window.handleToggle()"><svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
-                    <button class="p-btn-sec" onclick="window.seekOffset(15)"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/><text x="12" y="15.5" font-size="7" font-weight="900" text-anchor="middle" fill="currentColor" stroke="none">15</text></svg></button>
+                <div class="p-controls-group">
+                    <div class="p-controls">
+                        <button class="p-btn-sec" onclick="window.seekOffset(-15)"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2.5 2v6h6M2.66 15.57a10 10 0 1 0 .57-8.38"/><text x="12" y="15.5" font-size="7" font-weight="900" text-anchor="middle" fill="currentColor" stroke="none">15</text></svg></button>
+                        <button class="p-btn-play-large" id="mainPlayBtn" onclick="window.handleToggle()"><svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+                        <button class="p-btn-sec" onclick="window.seekOffset(15)"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/><text x="12" y="15.5" font-size="7" font-weight="900" text-anchor="middle" fill="currentColor" stroke="none">15</text></svg></button>
+                    </div>
+                    <button class="p-speed-btn" id="fullSpeedBtn" onclick="window.toggleSpeed()">1.0x</button>
                 </div>
             </div>
         </div>
@@ -171,7 +165,6 @@
         let allPodcastsData = [];
         try { allPodcastsData = JSON.parse(localStorage.getItem('podcast_db') || '[]'); } catch(e) { allPodcastsData = []; }
 
-        // 加载已读数据
         let readEpisodes = new Set();
         try { readEpisodes = new Set(JSON.parse(localStorage.getItem('read_episodes') || '[]')); } catch(e) { readEpisodes = new Set(); }
 
@@ -238,7 +231,10 @@
         window.renderEpisodeList = (idx) => {
             const p = allPodcastsData[idx];
             if(!p) return;
-            history.pushState({page: 'podcast-detail', id: idx}, '', `?podcast=${idx}`);
+            
+            if (!(history.state && history.state.page === 'podcast-detail' && history.state.id === idx)) {
+                history.pushState({page: 'podcast-detail', id: idx}, '', `?podcast=${idx}`);
+            }
 
             const overlay = document.getElementById('episodeModalOverlay');
             const list = document.getElementById('modalEpisodeList');
@@ -252,7 +248,6 @@
             document.getElementById('modalPodAuthor').innerText = p.author;
             
             if(descFullTitle) descFullTitle.innerText = p.title;
-
             const bio = p.description || "暂无简介";
             desc.innerText = bio;
             descFull.innerText = bio;
@@ -280,6 +275,7 @@
                     document.getElementById('playerTitle').innerText = ep.title;
                     document.getElementById('playerAuthor').innerText = p.title;
                     document.getElementById('dynamicBg').style.backgroundImage = `url('${cover}')`;
+                    
                     PlayerCore.updateMetadata(ep.title, p.title, cover);
                     PlayerCore.play(ep.audioUrl);
                     window.updatePlayIcons(true);
@@ -339,6 +335,7 @@
 
         function renderPodcastList() {
             const grid = document.getElementById('mainGrid');
+            if(!grid) return;
             grid.querySelectorAll('.podcast-card').forEach(c => c.remove());
             allPodcastsData.forEach((p, i) => {
                 const card = document.createElement('div');
@@ -357,8 +354,10 @@
             document.getElementById('editBtn').onclick = () => document.body.classList.toggle('edit-mode');
             document.getElementById('progressRange').oninput = (e) => PlayerCore.seek(e.target.value);
             PlayerCore.onTimeUpdate((pct, cur, tot) => {
-                document.getElementById('miniProgressFill').style.width = pct + '%';
-                document.getElementById('progressRange').value = pct;
+                const fill = document.getElementById('miniProgressFill');
+                const range = document.getElementById('progressRange');
+                if(fill) fill.style.width = pct + '%';
+                if(range) range.value = pct;
                 document.getElementById('currentTime').innerText = cur;
                 document.getElementById('durationTime').innerText = tot;
             });
