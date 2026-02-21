@@ -16,12 +16,7 @@
             padding: 0px 0 10px 0;
             background: transparent;
         }
-        .header-left .brand-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            cursor: pointer;
-        }
+        .header-left .brand-wrapper { display: flex; align-items: center; gap: 12px; cursor: pointer; }
         .brand-icon-pro { width: 32px; height: 32px; }
         #brandTitle { font-size: 24px; font-weight: 800; margin: 0; }
         .header-actions { display: flex; gap: 12px; }
@@ -171,12 +166,35 @@
         window.closePlayer = () => document.getElementById('playerOverlay').classList.remove('is-active');
         window.closeModal = () => document.getElementById('episodeModalOverlay').style.display = 'none';
 
+        // 切换简介展开状态
         window.toggleDesc = () => {
             const desc = document.getElementById('modalPodDesc');
             const btn = document.getElementById('descToggleBtn');
             const isExp = desc.classList.toggle('is-expanded');
             btn.innerText = isExp ? "收起" : "展开全文";
         };
+
+        // 判断是否需要显示“展开全文”按钮
+        function checkDescOverflow() {
+            const desc = document.getElementById('modalPodDesc');
+            const btn = document.getElementById('descToggleBtn');
+            // 先移除限制，获取内容真实高度
+            desc.style.display = 'block';
+            desc.style.webkitLineClamp = 'unset';
+            const fullHeight = desc.scrollHeight;
+            
+            // 恢复限制
+            desc.style.display = '-webkit-box';
+            desc.style.webkitLineClamp = '3';
+            
+            // 3行高度大约是 13px(字号) * 1.6(行高) * 3 = 62.4px
+            // 如果真实高度大于 65px，则显示按钮
+            if (fullHeight > 65) {
+                btn.style.display = 'block';
+            } else {
+                btn.style.display = 'none';
+            }
+        }
 
         window.handleToggle = () => {
             if (!PlayerCore.audio.src || PlayerCore.audio.src === window.location.href) return;
@@ -215,18 +233,23 @@
             const scrollArea = document.getElementById('modalScrollArea');
             const desc = document.getElementById('modalPodDesc');
             
+            // 1. 重置滚动位置到顶部
+            scrollArea.scrollTop = 0;
+
             document.getElementById('modalBigCover').src = p.image;
             document.getElementById('modalPodTitle').innerText = p.title;
             document.getElementById('modalPodAuthor').innerText = p.author;
             desc.innerText = p.description || "暂无简介";
             
-            // 重置展开状态
+            // 2. 重置展开状态
             desc.classList.remove('is-expanded');
             document.getElementById('descToggleBtn').innerText = "展开全文";
             
             listContainer.innerHTML = ""; 
-            scrollArea.scrollTop = 0;
             modalOverlay.style.display = 'flex'; 
+
+            // 3. 检测是否需要显示展开按钮 (由于元素刚显示，高度计算可能需要极短延迟)
+            setTimeout(checkDescOverflow, 10);
 
             p.episodes.forEach(ep => {
                 const item = document.createElement('div');
