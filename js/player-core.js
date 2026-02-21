@@ -1,21 +1,20 @@
 // js/player-core.js
 
-// 核心锁定：必须关联到 index.html 里的真实 DOM
 const sysAudio = document.getElementById('main-audio-player') || new Audio();
 
 export const PlayerCore = {
     audio: sysAudio,
     _onTimeUpdate: null,
-    _shadowTime: 0, // 关键：在 JS 内存中维护一份真实时间副本
+    _shadowTime: 0, 
+    _syncTimer: null, // 心跳定时器
 
     play(url) {
         if (!url) return;
         
-        // 1. 如果换歌了，彻底重置
         if (this.audio.src !== url) {
             this._shadowTime = 0;
             this.audio.src = url;
-            this.audio.load(); // 强制重新加载，清空旧状态
+            this.audio.load();
         }
         
         const currentRate = this.audio.playbackRate;
@@ -24,23 +23,21 @@ export const PlayerCore = {
         if (playPromise !== undefined) {
             playPromise.then(() => {
                 this.audio.playbackRate = currentRate;
-                // 播放成功后延迟一小下再推状态，确保 audio 内部 currentTime 已稳定
-                setTimeout(() => this.forceSyncState(), 100);
+                this.startSyncLoop(); // 开启强同步
+                this.forceSyncState();
             }).catch(e => console.error("Playback Error:", e));
         }
 
-        // 核心纠偏逻辑：每当系统试图归零，立刻从内存副本中恢复
         this.audio.ontimeupdate = () => {
             const cur = this.audio.currentTime;
             const dur = this.audio.duration;
 
-            // 如果检测到异常归零（系统归 0，但我们记得已经在放了，且不是在手动拖动进度）
+            // 纠偏逻辑：如果系统异常归零
             if (cur === 0 && this._shadowTime > 0.5 && !this.audio.paused) {
                 this.audio.currentTime = this._shadowTime;
                 return;
             }
 
-            // 只有数值合法才更新影子时间
             if (cur > 0 && isFinite(cur)) {
                 this._shadowTime = cur;
             }
@@ -51,46 +48,64 @@ export const PlayerCore = {
             }
         };
 
-        // 监听倍速/暂停等所有可能触发三星重置的事件
         this.audio.onplay = () => {
-            // 恢复播放时强制把影子时间塞回系统
-            if (this._shadowTime > 0) this.audio.currentTime = this._shadowTime;
+            if (this._shadowTime > 0 && Math.abs(this.audio.currentTime - this._shadowTime) > 1) {
+                this.audio.currentTime = this._shadowTime;
+            }
+            this.startSyncLoop();
             this.forceSyncState();
         };
-        this.audio.onpause = () => this.forceSyncState();
-        this.audio.onratechange = () => {
-            // 三星切换倍速时，有时会丢失 currentTime，强制拉回
-            if (this._shadowTime > 0) this.audio.currentTime = this._shadowTime;
+
+        this.audio.onpause = () => {
             this.forceSyncState();
+            // 暂停后不立即停止心跳，确保最后一刻状态被系统接收
+            setTimeout(() => this.stopSyncLoop(), 1000);
         };
+
         this.audio.onseeked = () => {
             this._shadowTime = this.audio.currentTime;
             this.forceSyncState();
         };
     },
 
-    // 强制同步函数：三星适配的关键
+    // 开启高频同步心跳 (每 500ms 强制向系统对齐一次进度)
+    startSyncLoop() {
+        if (this._syncTimer) clearInterval(this._syncTimer);
+        this._syncTimer = setInterval(() => {
+            this.forceSyncState();
+        }, 500);
+    },
+
+    stopSyncLoop() {
+        if (this._syncTimer) {
+            clearInterval(this._syncTimer);
+            this._syncTimer = null;
+        }
+    },
+
     forceSyncState() {
         if (!('mediaSession' in navigator)) return;
 
-        // 设置播放状态：务必保持一致
+        // 核心修正：在安卓通知栏，必须显式赋值这个状态，否则进度条会重置
         navigator.mediaSession.playbackState = this.audio.paused ? "paused" : "playing";
 
         const dur = this.audio.duration;
-        // 关键点：如果暂停了，优先使用影子时间，防止 audio.currentTime 采样到 0
-        const cur = (this.audio.paused && this._shadowTime > 0) ? this._shadowTime : this.audio.currentTime;
+        // 关键：如果 audio 本身汇报了 0 且我们有缓存，用缓存顶替
+        let cur = this.audio.currentTime;
+        if ((cur === 0 || isNaN(cur)) && this._shadowTime > 0) {
+            cur = this._shadowTime;
+        }
 
-        // 三星必须确保这三个值都是 finite（有限的）且 dur > 0
         if (Number.isFinite(dur) && dur > 0 && Number.isFinite(cur)) {
             try {
+                // 强制对齐位置状态
                 navigator.mediaSession.setPositionState({
                     duration: dur,
                     playbackPosition: Math.max(0, Math.min(cur, dur)),
                     playbackRate: this.audio.playbackRate || 1.0
                 });
             } catch (e) {
-                // 捕获系统组件忙碌时的异常
-                console.warn("MediaSession setPositionState failed:", e);
+                // 部分版本不支持 setPositionState 会报错，静默处理
             }
         }
     },
@@ -108,7 +123,6 @@ export const PlayerCore = {
                 ]
             });
 
-            // 注册系统按钮动作
             const actionHandlers = [
                 ['play', () => this.audio.play()],
                 ['pause', () => this.audio.pause()],
@@ -118,7 +132,7 @@ export const PlayerCore = {
                     if (details.seekTime !== undefined) {
                         this.audio.currentTime = details.seekTime;
                         this._shadowTime = details.seekTime;
-                        this.forceSyncState(); // 拖动后立即同步
+                        this.forceSyncState();
                     }
                 }]
             ];
@@ -126,9 +140,7 @@ export const PlayerCore = {
             for (const [action, handler] of actionHandlers) {
                 try {
                     navigator.mediaSession.setActionHandler(action, handler);
-                } catch (e) {
-                    console.warn(`MediaSession action [${action}] not supported`);
-                }
+                } catch (e) {}
             }
         }
     },
