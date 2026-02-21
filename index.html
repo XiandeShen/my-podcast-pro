@@ -69,9 +69,6 @@
                         </div>
                     </div>
                     <div class="header-actions">
-                        <button class="action-btn" id="editBtn" title="管理资料库">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                        </button>
                         <label class="action-btn" for="rssFileInput" style="cursor: pointer;">
                             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                             <input type="file" id="rssFileInput" accept=".rss,.xml" multiple style="display:none">
@@ -256,24 +253,40 @@
             renderPodcastList();
         }
 
-        // --- 核心修复：更健壮的渲染函数 ---
         function renderPodcastList() {
             const grid = document.getElementById('mainGrid');
             if(!grid) return;
             
-            // 1. 删除所有旧卡片
             const oldCards = grid.querySelectorAll('.podcast-card');
             oldCards.forEach(c => c.remove());
 
-            // 2. 遍历数据生成新卡片
             allPodcastsData.forEach((p, i) => {
                 const card = document.createElement('div');
                 card.className = 'podcast-card';
                 card.style.setProperty('--card-cover', `url('${p.image}')`);
                 
-                // 确保点击事件生效
-                card.onclick = () => { 
-                    if(!document.body.classList.contains('edit-mode')) window.renderEpisodeList(i); 
+                // 长按逻辑
+                let pressTimer;
+                const startPress = () => {
+                    pressTimer = setTimeout(() => {
+                        document.body.classList.add('edit-mode');
+                        if(navigator.vibrate) navigator.vibrate(50); // 震动反馈
+                    }, 600);
+                };
+                const cancelPress = () => clearTimeout(pressTimer);
+
+                card.onmousedown = startPress;
+                card.ontouchstart = startPress;
+                card.onmouseup = cancelPress;
+                card.ontouchend = cancelPress;
+                card.onmouseleave = cancelPress;
+
+                card.onclick = (e) => { 
+                    if(!document.body.classList.contains('edit-mode')) {
+                        window.renderEpisodeList(i); 
+                    } else {
+                        e.stopPropagation(); // 编辑模式下阻止冒泡，避免误触发退出
+                    }
                 };
 
                 card.innerHTML = `
@@ -301,13 +314,15 @@
             const fileInput = document.getElementById('rssFileInput');
             if(fileInput) fileInput.onchange = handleFileUpload;
 
-            const editBtn = document.getElementById('editBtn');
-            if(editBtn) {
-                editBtn.onclick = (e) => { 
-                    e.stopPropagation(); 
-                    document.body.classList.toggle('edit-mode'); 
-                };
-            }
+            // 点击空白处退出编辑模式
+            document.addEventListener('click', (e) => {
+                if (document.body.classList.contains('edit-mode')) {
+                    const isCard = e.target.closest('.podcast-card');
+                    if (!isCard) {
+                        document.body.classList.remove('edit-mode');
+                    }
+                }
+            });
 
             const range = document.getElementById('progressRange');
             if(range) range.oninput = (e) => PlayerCore.seek(e.target.value);
