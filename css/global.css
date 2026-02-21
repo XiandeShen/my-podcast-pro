@@ -22,16 +22,14 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro", sans-serif;
     background-color: var(--bg-gray);
     color: var(--text-main);
-    /* 核心修改：允许 body 自由滚动，不要固定它 */
+    /* 核心修改：移除 fixed 和 hidden，允许 body 自由滚动 */
     min-height: 100%;
     width: 100%;
     user-select: none;
     overflow-x: hidden;
-    /* 防止过度滚动干扰工具栏隐藏逻辑 */
-    overscroll-behavior-y: none;
 }
 
-/* 仅当弹窗开启时，锁定 body 背景滚动以防止“穿透” */
+/* 关键：仅当弹窗开启时，才锁定 body 的背景滚动 */
 body.modal-open {
     position: fixed;
     width: 100%;
@@ -53,7 +51,7 @@ body.modal-open {
     flex-direction: column; 
     position: relative; 
     padding: 0 15px; 
-    /* 核心修改：移除内部独立滚动，让内容溢出到 body 层 */
+    /* 核心修改：移除内部滚动，让 body 滚动以触发工具栏收起 */
     overflow: visible;
 }
 
@@ -61,7 +59,6 @@ body.modal-open {
     display: flex; justify-content: space-between; align-items: center;
     background: transparent;
     flex-shrink: 0;
-    padding-top: env(safe-area-inset-top);
 }
 .header-left .brand-wrapper { display: flex; align-items: center; gap: 12px; cursor: pointer; }
 .brand-icon-pro { width: 32px; height: 32px; }
@@ -110,6 +107,7 @@ body.edit-mode .delete-badge { display: flex; }
     overscroll-behavior-y: contain; 
     -webkit-overflow-scrolling: touch;
     padding: 0 40px 140px; 
+    touch-action: pan-y;
 }
 .modal-hero { display: flex; flex-direction: row; align-items: center; gap: 40px; margin-bottom: 50px; min-height: 280px; }
 .modal-big-cover { width: 280px; height: 280px; border-radius: 20px; object-fit: cover; box-shadow: 0 20px 45px rgba(0,0,0,0.12); flex-shrink: 0; }
