@@ -39,7 +39,7 @@
     </style>
 </head>
 <body>
-    <div class="app-container" id="appMain">
+    <div class="app-container">
         <section class="main-layout" id="scrollContainer">
             <main class="content" id="mainGrid">
                 <div class="inline-header" id="headerAnchor">
@@ -250,7 +250,6 @@
             renderPodcastList();
         }
 
-        // --- 核心优化：全量退出编辑模式逻辑 ---
         function renderPodcastList() {
             const grid = document.getElementById('mainGrid');
             if(!grid) return;
@@ -279,9 +278,7 @@
                 card.ontouchend = cancelPress;
 
                 card.onclick = (e) => { 
-                    // 编辑模式下，拦截除删除按钮外的所有点击以退出
                     if(document.body.classList.contains('edit-mode')) {
-                        e.stopPropagation();
                         document.body.classList.remove('edit-mode');
                         return;
                     }
@@ -310,16 +307,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             renderPodcastList();
             
-            // 全局点击监听：点击任何非删除按钮、非卡片的地方也退出编辑模式
-            document.getElementById('appMain').addEventListener('click', (e) => {
-                if (document.body.classList.contains('edit-mode')) {
-                    // 如果点击的不是删除按钮本身，就退出编辑模式
-                    if (!e.target.closest('.delete-badge')) {
-                        document.body.classList.remove('edit-mode');
-                    }
-                }
-            }, true); // 使用捕获阶段确保优先处理
-
             const fileInput = document.getElementById('rssFileInput');
             if(fileInput) fileInput.onchange = handleFileUpload;
 
