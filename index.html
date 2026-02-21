@@ -1,192 +1,330 @@
-:root {
-    --accent: #af52de;
-    --text-main: #1d1d1f;
-    --text-sub: #86868b;
-    --bg-gray: #f2f2f7;
-    --radius-card: 10px;
-    --nav-bg: rgba(255, 255, 255, 0.75);
-    --danger: #ff3b30;
-}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Podcast</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><defs><linearGradient id='podGradient' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%23AF52FF;stop-opacity:1' /><stop offset='100%' style='stop-color:%235C5CFF;stop-opacity:1' /></linearGradient></defs><rect width='200' height='200' rx='45' fill='url(%23podGradient)'/><g fill='white'><rect x='55' y='85' width='12' height='30' rx='6' opacity='0.6'/><rect x='75' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='95' y='55' width='12' height='90' rx='6'/><rect x='115' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='135' y='85' width='12' height='30' rx='6' opacity='0.6'/></g></svg>">
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="css/player.css">
+    <style>
+        /* 布局修正：确保 inline-header 独占一行且不遮挡内容 */
+        .inline-header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0 10px 0;
+            background: transparent;
+        }
+        .header-left .brand-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+        }
+        .brand-icon-pro { width: 32px; height: 32px; }
+        #brandTitle { font-size: 24px; font-weight: 800; margin: 0; }
+        .header-actions { display: flex; gap: 12px; }
+        
+        /* 修正 content 布局：确保内容始终从顶部开始，不居中 */
+        .content {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            align-content: start !important; /* 强制内容从顶部开始排列 */
+            gap: 24px;
+            padding-top: 10px !important;
+            padding-bottom: 120px !important;
+            height: 100%;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <section class="main-layout" id="scrollContainer">
+            <main class="content" id="mainGrid">
+                <div class="inline-header" id="headerAnchor">
+                    <div class="header-left">
+                        <div class="brand-wrapper" onclick="location.reload()">
+                            <div class="brand-icon-pro">
+                                <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <linearGradient id="podGradientHeader" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#AF52FF;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#5C5CFF;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                    <rect width="200" height="200" rx="45" fill="url(#podGradientHeader)"/>
+                                    <g fill="white">
+                                        <rect x="55" y="85" width="12" height="30" rx="6" opacity="0.6"/>
+                                        <rect x="75" y="70" width="12" height="60" rx="6" opacity="0.8"/>
+                                        <rect x="95" y="55" width="12" height="90" rx="6"/>
+                                        <rect x="115" y="70" width="12" height="60" rx="6" opacity="0.8"/>
+                                        <rect x="135" y="85" width="12" height="30" rx="6" opacity="0.6"/>
+                                    </g>
+                                </svg>
+                            </div>
+                            <h1 id="brandTitle">PODCAST</h1>
+                        </div>
+                    </div>
+                    <div class="header-actions">
+                        <button class="action-btn" id="editBtn" title="管理资料库">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        </button>
+                        <label class="action-btn" for="rssFileInput" style="cursor: pointer;">
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <input type="file" id="rssFileInput" accept=".rss,.xml" multiple style="display:none">
+                        </label>
+                    </div>
+                </div>
+                </main>
 
-* {
-    -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
-}
+            <footer class="mini-player is-empty" id="miniPlayer" onclick="window.expandPlayer()">
+                <div class="mini-player-content">
+                    <div class="mini-info">
+                        <img id="miniCover" src="data:image/svg+xml,<svg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><defs><linearGradient id='podGradient' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%23AF52FF;stop-opacity:1' /><stop offset='100%' style='stop-color:%235C5CFF;stop-opacity:1' /></linearGradient></defs><rect width='200' height='200' rx='0' fill='url(%23podGradient)'/><g fill='white'><rect x='55' y='85' width='12' height='30' rx='6' opacity='0.6'/><rect x='75' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='95' y='55' width='12' height='90' rx='6'/><rect x='115' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='135' y='85' width='12' height='30' rx='6' opacity='0.6'/></g></svg>">
+                        <div class="mini-text">
+                            <div id="miniTitle">请选择节目</div>
+                            <div id="miniAuthor">PODCAST</div>
+                        </div>
+                    </div>
+                    <div class="mini-controls">
+                        <button class="mini-play-btn" id="miniPlayBtn" onclick="event.stopPropagation(); window.handleToggle()">
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                        </button>
+                        <button class="mini-speed-btn-text" id="miniSpeedBtn" onclick="event.stopPropagation(); window.toggleSpeed()">1.0x</button>
+                    </div>
+                </div>
+                <div class="mini-progress-bar"><div class="mini-progress-fill" id="miniProgressFill"></div></div>
+            </footer>
+        </section>
+    </div>
 
-/* 核心优化：全量隐藏丑陋的系统滚动条，提升 App 感 */
-::-webkit-scrollbar { display: none; }
-* { scrollbar-width: none; -ms-overflow-style: none; }
+    <div id="episodeModalOverlay" class="modal-overlay" onclick="window.closeModal()">
+        <div class="episode-modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="modalPodTitle">播客节目</h3>
+                <button class="modal-close-x" onclick="window.closeModal()">&times;</button>
+            </div>
+            <div id="modalEpisodeList" class="modal-content"></div>
+        </div>
+    </div>
 
-body {
-    margin: 0; padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro", sans-serif;
-    background-color: var(--bg-gray);
-    color: var(--text-main);
-    height: 100svh; 
-    width: 100vw;
-    overflow: hidden;
-    user-select: none;
-}
+    <div id="playerOverlay" class="p-overlay">
+        <div id="dynamicBg" class="p-dynamic-bg"></div>
+        <div class="p-header-nav">
+            <button class="p-close-btn" onclick="window.closePlayer()">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+        </div>
+        <div class="p-main-content">
+            <div class="p-cover-wrap"><img id="playerCover" src=""></div>
+            <div class="p-controls-area">
+                <div class="p-info">
+                    <div class="p-info-text"><h2 id="playerTitle">未播放</h2><p id="playerAuthor">作者</p></div>
+                    <button class="p-speed-btn" id="fullSpeedBtn" onclick="window.toggleSpeed()">1.0x</button>
+                </div>
+                <div class="p-progress-wrap">
+                    <input type="range" class="p-slider" value="0" id="progressRange">
+                    <div class="p-time-info"><span id="currentTime">0:00</span><span id="durationTime">0:00</span></div>
+                </div>
+                <div class="p-controls">
+                    <button class="p-btn-sec" onclick="window.seekOffset(-15)"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2.5 2v6h6M2.66 15.57a10 10 0 1 0 .57-8.38"/><text x="12" y="15.5" font-size="7" font-weight="900" text-anchor="middle" fill="currentColor" stroke="none">15</text></svg></button>
+                    <button class="p-btn-play-large" id="mainPlayBtn" onclick="window.handleToggle()"><svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+                    <button class="p-btn-sec" onclick="window.seekOffset(15)"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/><text x="12" y="15.5" font-size="7" font-weight="900" text-anchor="middle" fill="currentColor" stroke="none">15</text></svg></button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-.app-container { 
-    display: flex; 
-    height: 100%; 
-    width: 100%; 
-}
+    <script type="module">
+        import { PlayerCore } from './js/player-core.js';
+        
+        // 数据初始化逻辑：确保变量始终可用
+        let allPodcastsData = [];
+        try {
+            allPodcastsData = JSON.parse(localStorage.getItem('podcast_db') || '[]');
+        } catch(e) {
+            allPodcastsData = [];
+        }
 
-.main-layout { 
-    flex: 1; 
-    display: flex; 
-    flex-direction: column; 
-    overflow: hidden; 
-    position: relative; 
-    background: transparent !important;
-}
+        const speeds = [1.0, 1.25, 1.5, 2.0];
+        let currentSpeedIndex = 0;
 
-.header { 
-    position: fixed; 
-    top: 0; 
-    left: 0; 
-    width: 100%; 
-    height: 80px; 
-    padding-top: env(safe-area-inset-top); 
-    background: var(--nav-bg) !important; 
-    backdrop-filter: blur(25px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
-    z-index: 1000;
-    border-bottom: 0.5px solid rgba(0,0,0,0.08);
-    display: flex; 
-    align-items: center; 
-    box-sizing: content-box;
-}
+        window.expandPlayer = () => {
+            const mini = document.getElementById('miniPlayer');
+            if (mini && mini.classList.contains('is-empty')) {
+                mini.classList.add('mini-shake');
+                setTimeout(() => mini.classList.remove('mini-shake'), 300);
+            } else {
+                document.getElementById('playerOverlay').classList.add('is-active');
+            }
+        };
+        window.closePlayer = () => document.getElementById('playerOverlay').classList.remove('is-active');
+        window.closeModal = () => document.getElementById('episodeModalOverlay').style.display = 'none';
 
-.header-content {
-    height: 80px; 
-    display: flex; 
-    align-items: center; 
-    justify-content: space-between;
-    width: 100%; 
-    padding: 0 24px;
-    box-sizing: border-box;
-}
+        window.handleToggle = () => {
+            if (!PlayerCore.audio.src || PlayerCore.audio.src === window.location.href) return;
+            const isPlaying = PlayerCore.toggle();
+            window.updatePlayIcons(isPlaying);
+        };
 
-.header-left { display: flex; align-items: center; flex: 1; overflow: hidden; }
-.brand-wrapper { display: flex; align-items: center; gap: 12px; cursor: pointer; }
-.brand-icon-pro { width: 36px; height: 36px; border-radius: 9px; background: linear-gradient(135deg, #af52de, #5e5ce6); flex-shrink: 0; }
-#brandTitle { font-size: 20px; font-weight: 800; letter-spacing: 0.5px; margin: 0; }
+        window.toggleSpeed = () => {
+            currentSpeedIndex = (currentSpeedIndex + 1) % speeds.length;
+            const newSpeed = speeds[currentSpeedIndex];
+            PlayerCore.audio.playbackRate = newSpeed;
+            const text = `${newSpeed.toFixed(1)}x`;
+            document.getElementById('miniSpeedBtn').innerText = text;
+            document.getElementById('fullSpeedBtn').innerText = text;
+        };
 
-.header-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-.action-btn {
-    width: 40px; height: 40px; 
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 50%; 
-    color: var(--text-main); 
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(0,0,0,0.05);
-    cursor: pointer; 
-    transition: all 0.3s ease;
-}
+        window.seekOffset = (s) => {
+            if(PlayerCore.audio.duration) PlayerCore.audio.currentTime = Math.max(0, Math.min(PlayerCore.audio.currentTime+s, PlayerCore.audio.duration));
+        };
 
-body.edit-mode #editBtn {
-    color: var(--danger);
-    border-color: var(--danger);
-}
+        window.updatePlayIcons = (isPlaying) => {
+            const playSvg = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+            const pauseSvg = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+            document.getElementById('miniPlayBtn').innerHTML = isPlaying ? pauseSvg : playSvg;
+            document.getElementById('mainPlayBtn').innerHTML = isPlaying ? 
+                pauseSvg.replace('width="22"','width="40"').replace('height="22"','height="40"') : 
+                playSvg.replace('width="22"','width="40"').replace('height="22"','height="40"');
+        };
 
-.content { 
-    flex: 1; 
-    overflow-y: auto; 
-    padding-top: calc(80px + env(safe-area-inset-top) + 20px) !important;
-    padding-left: 24px;
-    padding-right: 24px;
-    padding-bottom: calc(120px + env(safe-area-inset-bottom));
-    display: grid; 
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); 
-    gap: 24px;
-    background: transparent !important;
-}
+        window.renderEpisodeList = (idx) => {
+            const p = allPodcastsData[idx];
+            if(!p) return;
+            const modalOverlay = document.getElementById('episodeModalOverlay');
+            const listContainer = document.getElementById('modalEpisodeList');
+            document.getElementById('modalPodTitle').innerText = p.title;
+            listContainer.innerHTML = ""; 
+            modalOverlay.style.display = 'flex'; 
 
-@media (min-width: 768px) {
-    .content {
-        padding-top: calc(80px + 40px) !important;
-        padding-left: 48px;
-        padding-right: 48px;
-        padding-bottom: 160px;
-        grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-        gap: 32px;
-    }
-}
+            p.episodes.forEach(ep => {
+                const item = document.createElement('div');
+                item.className = 'episode-list-item';
+                item.onclick = () => {
+                    const cover = ep.image || p.image;
+                    document.getElementById('miniPlayer').classList.remove('is-empty');
+                    document.getElementById('miniCover').src = cover;
+                    document.getElementById('miniTitle').innerText = ep.title;
+                    document.getElementById('miniAuthor').innerText = p.title;
+                    document.getElementById('playerCover').src = cover;
+                    document.getElementById('playerTitle').innerText = ep.title;
+                    document.getElementById('playerAuthor').innerText = p.title;
+                    document.getElementById('dynamicBg').style.backgroundImage = `url('${cover}')`;
+                    
+                    PlayerCore.updateMetadata(ep.title, p.title, cover);
+                    PlayerCore.play(ep.audioUrl);
+                    PlayerCore.audio.playbackRate = speeds[currentSpeedIndex];
+                    window.updatePlayIcons(true);
+                };
+                item.innerHTML = `<img class="ep-list-cover" src="${ep.image || p.image}"><div class="ep-list-info"><div class="ep-list-title">${ep.title}</div><div class="ep-list-meta">播放单集</div></div>`;
+                listContainer.appendChild(item);
+            });
+        };
 
-.podcast-card { position: relative; cursor: pointer; }
-.podcast-card::before {
-    content: ""; display: block; aspect-ratio: 1/1;
-    background-image: var(--card-cover); background-size: cover; background-position: center;
-    border-radius: var(--radius-card); 
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05), 0 10px 25px rgba(0,0,0,0.08); 
-    margin-bottom: 12px;
-}
-.card-info h3 { font-size: 14px; margin: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.card-info p { font-size: 11px; color: var(--text-sub); margin-top: 4px; }
+        async function handleFileUpload(e) {
+            const files = Array.from(e.target.files);
+            for (const file of files) {
+                try {
+                    const text = await file.text();
+                    const dom = new DOMParser().parseFromString(text, "text/xml");
+                    const channel = dom.querySelector("channel");
+                    if (!channel) continue;
+                    const getImg = (el) => {
+                        const i = el.getElementsByTagName("itunes:image")[0];
+                        return i ? i.getAttribute("href") : (el.querySelector("image > url")?.textContent || "");
+                    };
+                    const pod = {
+                        title: channel.querySelector("title")?.textContent || "未知播客",
+                        author: channel.querySelector("itunes\\:author, author")?.textContent || "未知作者",
+                        image: getImg(channel),
+                        episodes: Array.from(dom.querySelectorAll("item")).map(item => ({
+                            title: item.querySelector("title")?.textContent,
+                            audioUrl: item.querySelector("enclosure")?.getAttribute("url"),
+                            image: getImg(item) || getImg(channel)
+                        }))
+                    };
+                    if (!allPodcastsData.find(x => x.title === pod.title)) allPodcastsData.push(pod);
+                } catch(err) {
+                    console.error("文件解析错误:", err);
+                }
+            }
+            localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
+            renderPodcastList();
+        }
 
-.modal-overlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.2); 
-    backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
-    z-index: 1500; display: none; align-items: center; justify-content: center;
-}
+        // --- 核心修复：更健壮的渲染函数 ---
+        function renderPodcastList() {
+            const grid = document.getElementById('mainGrid');
+            if(!grid) return;
+            
+            // 1. 删除所有旧卡片
+            const oldCards = grid.querySelectorAll('.podcast-card');
+            oldCards.forEach(c => c.remove());
 
-.episode-modal {
-    background: rgba(255, 255, 255, 0.8); 
-    backdrop-filter: blur(25px) saturate(180%);
-    -webkit-backdrop-filter: blur(25px) saturate(180%);
-    width: 92%; max-width: 550px; height: 70vh;
-    border-radius: 10px; 
-    display: flex; flex-direction: column;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.15); 
-    border: 0.5px solid rgba(255,255,255,0.4); 
-    overflow: hidden;
-    animation: modalSlide 0.4s cubic-bezier(0.2, 1, 0.2, 1);
-}
+            // 2. 遍历数据生成新卡片
+            allPodcastsData.forEach((p, i) => {
+                const card = document.createElement('div');
+                card.className = 'podcast-card';
+                card.style.setProperty('--card-cover', `url('${p.image}')`);
+                
+                // 确保点击事件生效
+                card.onclick = () => { 
+                    if(!document.body.classList.contains('edit-mode')) window.renderEpisodeList(i); 
+                };
 
-@keyframes modalSlide { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+                card.innerHTML = `
+                    <div class="delete-badge">
+                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="white" stroke-width="3" fill="none">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </div>
+                    <div class="card-info"><h3>${p.title}</h3><p>${p.author}</p></div>`;
+                
+                card.querySelector('.delete-badge').onclick = (e) => {
+                    e.stopPropagation();
+                    allPodcastsData.splice(i, 1);
+                    localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
+                    renderPodcastList();
+                };
+                grid.appendChild(card);
+            });
+        }
 
-.modal-header { padding: 20px 24px; border-bottom: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
-.modal-header h3 { font-size: 17px; margin: 0; font-weight: 800; }
-.modal-close-x { background: rgba(0,0,0,0.05); border: none; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 20px; }
+        document.addEventListener('DOMContentLoaded', () => {
+            renderPodcastList();
+            
+            const fileInput = document.getElementById('rssFileInput');
+            if(fileInput) fileInput.onchange = handleFileUpload;
 
-.modal-content { flex: 1; overflow-y: auto; padding: 10px 16px; background: transparent !important; }
+            const editBtn = document.getElementById('editBtn');
+            if(editBtn) {
+                editBtn.onclick = (e) => { 
+                    e.stopPropagation(); 
+                    document.body.classList.toggle('edit-mode'); 
+                };
+            }
 
-.episode-list-item { display: flex; align-items: center; padding: 12px; border-radius: 14px; cursor: pointer; }
-.ep-list-cover { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; margin-right: 12px; }
-.ep-list-info { flex: 1; overflow: hidden; }
-.ep-list-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ep-list-meta { font-size: 10px; color: var(--accent); margin-top: 2px; font-weight: 700; }
+            const range = document.getElementById('progressRange');
+            if(range) range.oninput = (e) => PlayerCore.seek(e.target.value);
 
-/* 核心修改：进度条彻底隐身 + 激光发光 */
-.mini-progress-bar { 
-    width: 100%; 
-    height: 2px; 
-    background: transparent !important; /* 强制背景透明，不留任何痕迹 */
-    position: absolute; 
-    bottom: 0; 
-    left: 0; 
-    box-shadow: none !important; /* 移除可能产生的阴影阴影 */
-}
-.mini-progress-fill { 
-    height: 100%; 
-    background: var(--accent); 
-    width: 0%; 
-    transition: width 0.1s linear; 
-    box-shadow: 0 0 12px var(--accent); /* 激光发光效果 */
-}
+            PlayerCore.onTimeUpdate((pct, cur, tot) => {
+                const f = document.getElementById('miniProgressFill');
+                if(f) f.style.width = pct + '%';
+                const pr = document.getElementById('progressRange');
+                if(pr) pr.value = pct;
+                const ct = document.getElementById('currentTime');
+                if(ct) ct.innerText = cur;
+                const dt = document.getElementById('durationTime');
+                if(dt) dt.innerText = tot;
+            });
 
-.delete-badge {
-    position: absolute; top: -8px; right: -8px; width: 28px; height: 28px;
-    background: var(--danger); border: 2px solid #fff; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; transform: scale(0.5); transition: 0.3s; z-index: 10;
-}
-body.edit-mode .delete-badge { opacity: 1; transform: scale(1); }
-body.edit-mode .podcast-card { animation: shake 0.5s infinite; }
-@keyframes shake { 0%,100%{transform:rotate(0.5deg)} 50%{transform:rotate(-0.5deg)} }
+            PlayerCore.audio.onended = () => window.updatePlayIcons(false);
+        });
+    </script>
+</body>
+</html>
