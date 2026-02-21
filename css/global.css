@@ -169,7 +169,21 @@ body.edit-mode .delete-badge { display: flex; }
 .episode-list-item:hover { background: rgba(0,0,0,0.04); }
 .ep-list-cover { width: 52px; height: 52px; border-radius: 8px; margin-right: 18px; flex-shrink: 0; }
 .ep-list-info { flex: 1; min-width: 0; }
-.ep-list-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; color: #1d1d1f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 修改点：允许单集标题换行并限制为两行 */
+.ep-list-title { 
+    font-size: 16px; 
+    font-weight: 600; 
+    margin-bottom: 4px; 
+    color: #1d1d1f; 
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    white-space: normal; /* 覆盖之前的 nowrap */
+    word-break: break-all;
+}
+
 .ep-list-meta { font-size: 13px; color: var(--text-sub); }
 
 @media (max-width: 768px) {
