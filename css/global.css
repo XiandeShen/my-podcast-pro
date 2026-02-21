@@ -37,6 +37,11 @@ body.modal-open {
     overflow: hidden;
 }
 
+/* 修复残影：当二级页面开启时，将底层容器设为不可见，迫使渲染引擎忽略它 */
+body.modal-open .app-container {
+    visibility: hidden;
+}
+
 .app-container { 
     display: flex; 
     flex-direction: column;
