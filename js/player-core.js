@@ -12,8 +12,17 @@ export const PlayerCore = {
         if (playPromise !== undefined) {
             playPromise.then(() => {
                 this.audio.playbackRate = currentRate;
+                // 显式告知系统当前正在播放，这对安卓系统组件非常重要
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.playbackState = "playing";
+                }
             }).catch(error => console.error("Playback Error:", error));
         }
+
+        // 监听元数据加载，确保总时长能第一时间传给系统
+        this.audio.onloadedmetadata = () => {
+            this.updateSystemPositionState();
+        };
 
         this.audio.ontimeupdate = () => {
             const current = this.format(this.audio.currentTime);
@@ -22,14 +31,23 @@ export const PlayerCore = {
             if (this._onTimeUpdate) this._onTimeUpdate(pct, current, total);
             
             // 同步进度到系统锁屏控件
-            if ('mediaSession' in navigator && this.audio.duration) {
+            this.updateSystemPositionState();
+        };
+    },
+
+    // 抽离出的同步方法，增加防御性检查
+    updateSystemPositionState() {
+        if ('mediaSession' in navigator && this.audio.duration && !isNaN(this.audio.duration)) {
+            try {
                 navigator.mediaSession.setPositionState({
                     duration: this.audio.duration,
                     playbackPosition: this.audio.currentTime,
                     playbackRate: this.audio.playbackRate
                 });
+            } catch (e) {
+                console.warn("PositionState Update Failed:", e);
             }
-        };
+        }
     },
 
     // 新增：向安卓/iOS系统推送媒体信息
@@ -51,16 +69,21 @@ export const PlayerCore = {
             // 注册锁屏控制按钮回调
             navigator.mediaSession.setActionHandler('play', () => { 
                 this.audio.play(); 
+                navigator.mediaSession.playbackState = "playing"; // 同步状态
                 if(window.updatePlayIcons) window.updatePlayIcons(true); 
             });
             navigator.mediaSession.setActionHandler('pause', () => { 
                 this.audio.pause(); 
+                navigator.mediaSession.playbackState = "paused"; // 同步状态
                 if(window.updatePlayIcons) window.updatePlayIcons(false); 
             });
             navigator.mediaSession.setActionHandler('seekbackward', () => { if(window.seekOffset) window.seekOffset(-15); });
             navigator.mediaSession.setActionHandler('seekforward', () => { if(window.seekOffset) window.seekOffset(15); });
             navigator.mediaSession.setActionHandler('seekto', (details) => {
-                if (details.seekTime) this.audio.currentTime = details.seekTime;
+                if (details.seekTime) {
+                    this.audio.currentTime = details.seekTime;
+                    this.updateSystemPositionState();
+                }
             });
         }
     },
@@ -68,12 +91,23 @@ export const PlayerCore = {
     onTimeUpdate(cb) { this._onTimeUpdate = cb; },
 
     toggle() {
-        if (this.audio.paused) { this.audio.play(); return true; }
-        else { this.audio.pause(); return false; }
+        if (this.audio.paused) { 
+            this.audio.play(); 
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
+            return true; 
+        }
+        else { 
+            this.audio.pause(); 
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused";
+            return false; 
+        }
     },
 
     seek(pct) {
-        if (this.audio.duration) this.audio.currentTime = (pct / 100) * this.audio.duration;
+        if (this.audio.duration) {
+            this.audio.currentTime = (pct / 100) * this.audio.duration;
+            this.updateSystemPositionState();
+        }
     },
 
     format(s) {
