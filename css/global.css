@@ -120,7 +120,9 @@ body {
     box-shadow: 0 4px 12px rgba(0,0,0,0.05), 0 10px 25px rgba(0,0,0,0.08); 
     margin-bottom: 12px;
 }
-.podcast-card:hover { transform: translateY(-6px); }
+/* 优化：仅在非编辑模式下允许 hover 效果，防止退出时的跳动 */
+body:not(.edit-mode) .podcast-card:hover { transform: translateY(-6px); }
+
 .card-info h3 { font-size: 14px; margin: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-info p { font-size: 11px; color: var(--text-sub); margin-top: 4px; }
 
@@ -186,20 +188,3 @@ body {
 body.edit-mode .delete-badge { opacity: 1; transform: scale(1); }
 body.edit-mode .podcast-card { animation: shake 0.5s infinite; }
 @keyframes shake { 0%,100%{transform:rotate(0.5deg)} 50%{transform:rotate(-0.5deg)} }
-
-/* 移动端禁用不跟手动画（保留编辑模式抖动） */
-@media (pointer: coarse) {
-    .action-btn,
-    .podcast-card,
-    .episode-modal,
-    .episode-list-item,
-    .delete-badge {
-        transition: none !important;
-        animation: none !important;
-    }
-
-    /* 显式保留编辑模式的抖动动画 */
-    body.edit-mode .podcast-card { 
-        animation: shake 0.5s infinite !important; 
-    }
-}
