@@ -13,9 +13,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            /* 修改 padding 和高度，确保它始终在最顶部 */
-            padding: 0px 0 10px 0;
-            height: 60px;
+            padding: 10px 0 10px 0;
+            height: 30px;
             background: transparent;
         }
         .header-left .brand-wrapper {
@@ -29,11 +28,6 @@
         .brand-icon-pro { width: 32px; height: 32px; }
         #brandTitle { font-size: 24px; font-weight: 800; margin: 0; }
         .header-actions { display: flex; gap: 12px; }
-        
-        .content {
-            padding-top: 10px !important;
-            padding-bottom: 120px !important;
-        }
     </style>
 </head>
 <body>
@@ -303,8 +297,10 @@
         function renderPodcastList() {
             const grid = document.getElementById('mainGrid');
             if(!grid) return;
-            const oldCards = grid.querySelectorAll('.podcast-card');
-            oldCards.forEach(c => c.remove());
+            
+            // 清除旧卡片和占位符，保留 inline-header
+            const itemsToRemove = grid.querySelectorAll('.podcast-card, .grid-footer-spacer');
+            itemsToRemove.forEach(c => c.remove());
 
             allPodcastsData.forEach((p, i) => {
                 const card = document.createElement('div');
@@ -329,6 +325,11 @@
                 };
                 grid.appendChild(card);
             });
+
+            // 添加底部避让占位符
+            const spacer = document.createElement('div');
+            spacer.className = 'grid-footer-spacer';
+            grid.appendChild(spacer);
         }
 
         document.addEventListener('DOMContentLoaded', () => {
