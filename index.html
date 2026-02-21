@@ -7,52 +7,6 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><defs><linearGradient id='podGradient' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%23AF52FF;stop-opacity:1' /><stop offset='100%' style='stop-color:%235C5CFF;stop-opacity:1' /></linearGradient></defs><rect width='200' height='200' rx='45' fill='url(%23podGradient)'/><g fill='white'><rect x='55' y='85' width='12' height='30' rx='6' opacity='0.6'/><rect x='75' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='95' y='55' width='12' height='90' rx='6'/><rect x='115' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='135' y='85' width='12' height='30' rx='6' opacity='0.6'/></g></svg>">
     <link rel="stylesheet" href="css/global.css">
     <link rel="stylesheet" href="css/player.css">
-    <style>
-        .inline-header {
-            grid-column: 1 / -1;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0px 0 10px 0;
-            background: transparent;
-        }
-        .header-left .brand-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            cursor: pointer;
-        }
-        .brand-icon-pro { width: 32px; height: 32px; }
-        #brandTitle { font-size: 24px; font-weight: 800; margin: 0; }
-        .header-actions { display: flex; gap: 12px; }
-        .content {
-            display: grid !important;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            align-content: start !important;
-            gap: 24px;
-            padding-top: 10px !important;
-            padding-bottom: 120px !important;
-            height: 100%;
-            box-sizing: border-box;
-        }
-        /* 新增指示条样式 */
-        .modal-handle {
-            width: 100%;
-            height: 30px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-shrink: 0;
-            cursor: pointer;
-        }
-        .modal-handle::after {
-            content: "";
-            width: 36px;
-            height: 5px;
-            background-color: rgba(0, 0, 0, 0.15);
-            border-radius: 3px;
-        }
-    </style>
 </head>
 <body>
     <div class="app-container">
@@ -167,11 +121,7 @@
         import { PlayerCore } from './js/player-core.js';
         
         let allPodcastsData = [];
-        try {
-            allPodcastsData = JSON.parse(localStorage.getItem('podcast_db') || '[]');
-        } catch(e) {
-            allPodcastsData = [];
-        }
+        try { allPodcastsData = JSON.parse(localStorage.getItem('podcast_db') || '[]'); } catch(e) { allPodcastsData = []; }
 
         const speeds = [1.0, 1.25, 1.5, 2.0];
         let currentSpeedIndex = 0;
@@ -301,9 +251,7 @@
                         }))
                     };
                     if (!allPodcastsData.find(x => x.title === pod.title)) allPodcastsData.push(pod);
-                } catch(err) {
-                    console.error("文件解析错误:", err);
-                }
+                } catch(err) { console.error("文件解析错误:", err); }
             }
             localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
             renderPodcastList();
@@ -319,9 +267,7 @@
                 const card = document.createElement('div');
                 card.className = 'podcast-card';
                 card.style.setProperty('--card-cover', `url('${p.image}')`);
-                card.onclick = () => { 
-                    if(!document.body.classList.contains('edit-mode')) window.renderEpisodeList(i); 
-                };
+                card.onclick = () => { if(!document.body.classList.contains('edit-mode')) window.renderEpisodeList(i); };
 
                 card.innerHTML = `
                     <div class="delete-badge">
