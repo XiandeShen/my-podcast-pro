@@ -20,40 +20,90 @@ export const PlayerCore = {
             playPromise
                 .then(() => {
                     this.audio.playbackRate = currentRate;
+                    this._updateMediaSession(); // 播放后立即更新
                 })
                 .catch(error => console.error("Playback Error:", error));
         }
 
-        // 移除所有 MediaSession 更新调用，只保留必要的 UI 更新
-        this.audio.onloadedmetadata = () => {
-            // 可以留空或处理其他逻辑，但无需 MediaSession
-        };
+        // 元数据加载完成后更新 MediaSession
+        this.audio.onloadedmetadata = () => this._updateMediaSession();
 
+        // 时间更新时同步给 UI 和 MediaSession
         this.audio.ontimeupdate = () => {
             const cur = this.audio.currentTime;
             const dur = this.audio.duration;
             if (this._onTimeUpdate) {
                 this._onTimeUpdate((cur / dur) * 100 || 0, this.format(cur), this.format(dur));
             }
-            // 移除 MediaSession 更新
+            this._updateMediaSession(); // 每次时间变化都更新系统组件
         };
 
-        // 以下事件无需处理 MediaSession，但保留事件以防未来扩展
-        this.audio.onplay = () => {};
-        this.audio.onpause = () => {};
-        this.audio.onseeked = () => {};
-        this.audio.onratechange = () => {};
-        this.audio.onended = () => {};
+        // 其他关键事件更新 MediaSession
+        this.audio.onplay = () => this._updateMediaSession();
+        this.audio.onpause = () => this._updateMediaSession();
+        this.audio.onseeked = () => this._updateMediaSession();
+        this.audio.onratechange = () => this._updateMediaSession();
+        this.audio.onended = () => this._updateMediaSession();
     },
 
-    // 移除所有 MediaSession 相关代码，此方法可保留为空，避免外部调用报错
+    // 更新 MediaSession 状态和位置
+    _updateMediaSession() {
+        if (!('mediaSession' in navigator)) return;
+
+        // 更新播放状态
+        navigator.mediaSession.playbackState = this.audio.paused ? "paused" : "playing";
+
+        const dur = this.audio.duration;
+        const cur = this.audio.currentTime;
+
+        // 确保 duration 是有效的正数，currentTime 是有效数字
+        if (dur && Number.isFinite(dur) && dur > 0 && Number.isFinite(cur)) {
+            try {
+                navigator.mediaSession.setPositionState({
+                    duration: dur,
+                    playbackPosition: Math.max(0, cur),
+                    playbackRate: this.audio.playbackRate || 1.0
+                });
+            } catch (error) {
+                console.warn("MediaSession setPositionState error:", error);
+            }
+        }
+    },
+
+    // 设置 Metadata 和事件处理器（每次播放新节目时调用）
     updateMetadata(title, artist, cover) {
-        // 不再与系统组件交互
+        if (!('mediaSession' in navigator)) return;
+
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: title,
+            artist: artist,
+            artwork: [
+                { src: cover, sizes: '96x96' },
+                { src: cover, sizes: '128x128' },
+                { src: cover, sizes: '256x256' },
+                { src: cover, sizes: '512x512' }
+            ]
+        });
+
+        // 设置控制动作（只需绑定一次，但重复绑定无害）
+        navigator.mediaSession.setActionHandler('play', () => { this.audio.play(); });
+        navigator.mediaSession.setActionHandler('pause', () => { this.audio.pause(); });
+        navigator.mediaSession.setActionHandler('seekbackward', () => {
+            this.audio.currentTime = Math.max(0, this.audio.currentTime - 15);
+        });
+        navigator.mediaSession.setActionHandler('seekforward', () => {
+            this.audio.currentTime = Math.min(this.audio.duration, this.audio.currentTime + 15);
+        });
+        navigator.mediaSession.setActionHandler('seekto', (details) => {
+            if (details.seekTime !== undefined && Number.isFinite(details.seekTime)) {
+                this.audio.currentTime = details.seekTime;
+            }
+        });
     },
 
-    // 移除 MediaSession 更新方法，或保留为空
+    // 手动触发 MediaSession 更新（供外部调用，但内部已自动处理，此方法可留空或保留）
     updateMediaSessionState() {
-        // 不再使用
+        this._updateMediaSession();
     },
 
     onTimeUpdate(cb) {
