@@ -12,14 +12,12 @@ export const PlayerCore = {
         if (playPromise !== undefined) {
             playPromise.then(() => {
                 this.audio.playbackRate = currentRate;
-                // 显式告知系统当前正在播放，这对安卓系统组件非常重要
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.playbackState = "playing";
                 }
             }).catch(error => console.error("Playback Error:", error));
         }
 
-        // 监听元数据加载，确保总时长能第一时间传给系统
         this.audio.onloadedmetadata = () => {
             this.updateSystemPositionState();
         };
@@ -30,12 +28,12 @@ export const PlayerCore = {
             const pct = (this.audio.currentTime / this.audio.duration) * 100 || 0;
             if (this._onTimeUpdate) this._onTimeUpdate(pct, current, total);
             
-            // 同步进度到系统锁屏控件
+            // 正常播放时持续同步位置
             this.updateSystemPositionState();
         };
     },
 
-    // 抽离出的同步方法，增加防御性检查
+    // 核心修复函数：向系统汇报精准的播放位置
     updateSystemPositionState() {
         if ('mediaSession' in navigator && this.audio.duration && !isNaN(this.audio.duration)) {
             try {
@@ -45,12 +43,12 @@ export const PlayerCore = {
                     playbackRate: this.audio.playbackRate
                 });
             } catch (e) {
-                console.warn("PositionState Update Failed:", e);
+                // 某些浏览器在时长无效时会抛错，增加防御
+                console.warn("MediaSession Position Error:", e);
             }
         }
     },
 
-    // 新增：向安卓/iOS系统推送媒体信息
     updateMetadata(title, artist, cover) {
         if ('mediaSession' in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
@@ -66,22 +64,24 @@ export const PlayerCore = {
                 ]
             });
 
-            // 注册锁屏控制按钮回调
             navigator.mediaSession.setActionHandler('play', () => { 
                 this.audio.play(); 
-                navigator.mediaSession.playbackState = "playing"; // 同步状态
+                navigator.mediaSession.playbackState = "playing";
                 if(window.updatePlayIcons) window.updatePlayIcons(true); 
             });
             navigator.mediaSession.setActionHandler('pause', () => { 
                 this.audio.pause(); 
-                navigator.mediaSession.playbackState = "paused"; // 同步状态
+                navigator.mediaSession.playbackState = "paused";
                 if(window.updatePlayIcons) window.updatePlayIcons(false); 
             });
             navigator.mediaSession.setActionHandler('seekbackward', () => { if(window.seekOffset) window.seekOffset(-15); });
             navigator.mediaSession.setActionHandler('seekforward', () => { if(window.seekOffset) window.seekOffset(15); });
+            
+            // 重点修复：系统组件拖动或点击进度条的处理
             navigator.mediaSession.setActionHandler('seekto', (details) => {
-                if (details.seekTime) {
+                if (details.seekTime !== undefined && details.seekTime !== null) {
                     this.audio.currentTime = details.seekTime;
+                    // 跳转后立刻强制同步状态，否则系统组件会卡在总时长
                     this.updateSystemPositionState();
                 }
             });
@@ -95,8 +95,7 @@ export const PlayerCore = {
             this.audio.play(); 
             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
             return true; 
-        }
-        else { 
+        } else { 
             this.audio.pause(); 
             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused";
             return false; 
@@ -106,6 +105,7 @@ export const PlayerCore = {
     seek(pct) {
         if (this.audio.duration) {
             this.audio.currentTime = (pct / 100) * this.audio.duration;
+            // 网页端拖动进度条后，也要同步给系统组件
             this.updateSystemPositionState();
         }
     },
