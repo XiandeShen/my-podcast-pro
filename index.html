@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="css/player.css">
     <style>
         .modal-hero {
-            padding-top: calc(60px + env(safe-area-inset-top));
+            padding-top: calc(80px + env(safe-area-inset-top));
             padding-bottom: 20px;
         }
         .modal-content {
@@ -17,7 +17,6 @@
             padding-bottom: calc(90px + env(safe-area-inset-bottom));
         }
 
-        /* 优化主页头部：移除 margin-left/right 负值，改用更稳定的 padding 方案 */
         .inline-header {
             position: sticky;
             top: 0;
@@ -180,9 +179,13 @@
             }
             if (state.page === 'podcast-detail') {
                 document.getElementById('episodeModalOverlay').style.display = 'flex';
+                // 核心修复：打开二级页面时禁止主页滚动
+                document.getElementById('scrollContainer').style.overflowY = 'hidden';
             } else if (!state.page) {
                 document.getElementById('episodeModalOverlay').style.display = 'none';
                 document.getElementById('descFullOverlay').classList.remove('is-active');
+                // 恢复滚动
+                document.getElementById('scrollContainer').style.overflowY = 'auto';
             }
         });
 
@@ -254,6 +257,8 @@
             
             list.innerHTML = ""; 
             overlay.style.display = 'flex'; 
+            // 打开时物理锁定主页
+            document.getElementById('scrollContainer').style.overflowY = 'hidden';
 
             requestAnimationFrame(() => {
                 toggleBtn.style.display = (desc.scrollHeight > desc.offsetHeight + 2) ? 'inline-block' : 'none';
@@ -361,6 +366,14 @@
                 document.getElementById('currentTime').innerText = cur;
                 document.getElementById('durationTime').innerText = tot;
             });
+
+            // 核心修复：防止任何可能触发页面反弹的行为
+            document.addEventListener('touchmove', (e) => {
+                if (e.target.closest('.main-layout') || e.target.closest('.modal-content') || e.target.closest('.desc-full-text')) {
+                    return;
+                }
+                e.preventDefault();
+            }, { passive: false });
         });
     </script>
 </body>
