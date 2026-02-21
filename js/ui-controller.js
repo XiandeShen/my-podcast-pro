@@ -14,28 +14,13 @@ export const UI = {
         if (playerCover) playerCover.src = finalCover;
         overlay.classList.add('is-active');
 
-        PlayerCore.play(episode.audioUrl, (current, total) => {
-            this.updateProgress(current, total);
-        });
+        // 统一使用 PlayerCore 的 updateMetadata
+        PlayerCore.updateMetadata(episode.title, podcastTitle, finalCover);
+        PlayerCore.play(episode.audioUrl);
     },
 
-    updateProgress(current, total) {
-        const progressRange = document.getElementById('progressRange');
-        const currentTimeEl = document.getElementById('currentTime');
-        const durationTimeEl = document.getElementById('durationTime');
-
-        if (total > 0) {
-            const percent = (current / total) * 100;
-            if (progressRange) progressRange.value = percent;
-            if (currentTimeEl) currentTimeEl.innerText = this.formatTime(current);
-            if (durationTimeEl) durationTimeEl.innerText = this.formatTime(total);
-        }
-    },
-
+    // 格式化函数保持一致
     formatTime(seconds) {
-        if (isNaN(seconds)) return "0:00";
-        const m = Math.floor(seconds / 60);
-        const s = Math.floor(seconds % 60);
-        return `${m}:${s < 10 ? '0' : ''}${s}`;
+        return PlayerCore.format(seconds);
     }
 };
