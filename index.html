@@ -36,7 +36,7 @@
             position: absolute;
             top: 45px;
             right: 0;
-            background: rgba(255, 255, 255, 0.95);
+            background: var(--menu-bg);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border-radius: 14px;
@@ -46,7 +46,7 @@
             flex-direction: column;
             padding: 6px;
             z-index: 2000;
-            border: 0.5px solid rgba(0,0,0,0.05);
+            border: 0.5px solid var(--border-light);
             animation: menuFade 0.2s ease-out;
         }
         @keyframes menuFade {
@@ -66,9 +66,9 @@
             cursor: pointer;
             transition: background 0.2s;
         }
-        .menu-item:active { background: rgba(0,0,0,0.05); }
+        .menu-item:active { background: rgba(120,120,120,0.1); }
         .menu-item svg { opacity: 0.7; }
-        .menu-divider { height: 0.5px; background: rgba(0,0,0,0.1); margin: 4px 8px; }
+        .menu-divider { height: 0.5px; background: var(--border-light); margin: 4px 8px; }
     </style>
 </head>
 <body>
@@ -114,10 +114,14 @@
                                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                                     添加节目
                                 </div>
-                                <div class="menu-divider"></div>
                                 <div class="menu-item" id="exportAction">
                                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                                     备份资料库
+                                </div>
+                                <div class="menu-divider"></div>
+                                <div class="menu-item" id="themeToggleAction">
+                                    <svg id="themeIcon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                                    <span id="themeText">深色模式</span>
                                 </div>
                             </div>
                         </div>
@@ -229,6 +233,27 @@
 
         document.getElementById('exportAction').onclick = () => {
             handleExport();
+        };
+
+        // 深色模式逻辑
+        function updateThemeUI(isDark) {
+            const icon = document.getElementById('themeIcon');
+            const text = document.getElementById('themeText');
+            if (isDark) {
+                document.body.classList.add('dark-mode');
+                text.innerText = '浅色模式';
+                icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+            } else {
+                document.body.classList.remove('dark-mode');
+                text.innerText = '深色模式';
+                icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+            }
+        }
+
+        document.getElementById('themeToggleAction').onclick = () => {
+            const isDark = !document.body.classList.contains('dark-mode');
+            updateThemeUI(isDark);
+            localStorage.setItem('podcast_theme', isDark ? 'dark' : 'light');
         };
 
         window.expandPlayer = () => {
@@ -448,6 +473,11 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             renderPodcastList();
+
+            // 初始化主题
+            const savedTheme = localStorage.getItem('podcast_theme');
+            if (savedTheme === 'dark') updateThemeUI(true);
+
             const fileInput = document.getElementById('rssFileInput');
             if(fileInput) fileInput.onchange = handleFileUpload;
             
