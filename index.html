@@ -298,7 +298,6 @@
             const grid = document.getElementById('mainGrid');
             if(!grid) return;
             
-            // 清除旧卡片和占位符，保留 inline-header
             const itemsToRemove = grid.querySelectorAll('.podcast-card, .grid-footer-spacer');
             itemsToRemove.forEach(c => c.remove());
 
@@ -310,13 +309,18 @@
                     if(!document.body.classList.contains('edit-mode')) window.renderEpisodeList(i); 
                 };
                 card.innerHTML = `
+                    <div class="card-inner">
+                        <div class="card-info">
+                            <h3>${p.title}</h3>
+                            <p>${p.author}</p>
+                        </div>
+                    </div>
                     <div class="delete-badge">
                         <svg viewBox="0 0 24 24" width="14" height="14" stroke="white" stroke-width="3" fill="none">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
-                    </div>
-                    <div class="card-info"><h3>${p.title}</h3><p>${p.author}</p></div>`;
+                    </div>`;
                 card.querySelector('.delete-badge').onclick = (e) => {
                     e.stopPropagation();
                     allPodcastsData.splice(i, 1);
@@ -326,7 +330,6 @@
                 grid.appendChild(card);
             });
 
-            // 添加底部避让占位符
             const spacer = document.createElement('div');
             spacer.className = 'grid-footer-spacer';
             grid.appendChild(spacer);
