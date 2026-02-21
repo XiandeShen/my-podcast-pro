@@ -27,7 +27,48 @@
         .header-left .brand-wrapper:active { transform: scale(0.96); }
         .brand-icon-pro { width: 32px; height: 32px; }
         #brandTitle { font-size: 24px; font-weight: 800; margin: 0; }
-        .header-actions { display: flex; gap: 12px; }
+        
+        /* 菜单容器样式 */
+        .header-actions { display: flex; gap: 8px; position: relative; }
+        
+        /* 二级菜单样式 */
+        .dropdown-menu {
+            position: absolute;
+            top: 45px;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 14px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            width: 160px;
+            display: none;
+            flex-direction: column;
+            padding: 6px;
+            z-index: 2000;
+            border: 0.5px solid rgba(0,0,0,0.05);
+            animation: menuFade 0.2s ease-out;
+        }
+        @keyframes menuFade {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .dropdown-menu.show { display: flex; }
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-main);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .menu-item:active { background: rgba(0,0,0,0.05); }
+        .menu-item svg { opacity: 0.7; }
+        .menu-divider { height: 0.5px; background: rgba(0,0,0,0.1); margin: 4px 8px; }
     </style>
 </head>
 <body>
@@ -59,19 +100,32 @@
                         </div>
                     </div>
                     <div class="header-actions">
-                        <button class="action-btn" id="exportBtn" title="导出备份">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                        </button>
                         <button class="action-btn" id="editBtn" title="管理资料库">
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                         </button>
-                        <label class="action-btn" for="rssFileInput" style="cursor: pointer;" title="导入 RSS 或 备份文件">
-                            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                            <input type="file" id="rssFileInput" accept=".rss,.xml,.json" multiple style="display:none">
-                        </label>
+                        
+                        <div style="position: relative;">
+                            <button class="action-btn" id="menuToggleBtn">
+                                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                            </button>
+                            
+                            <div class="dropdown-menu" id="moreMenu">
+                                <div class="menu-item" id="importAction">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                    添加节目
+                                </div>
+                                <div class="menu-divider"></div>
+                                <div class="menu-item" id="exportAction">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    备份资料库
+                                </div>
+                            </div>
+                        </div>
+
+                        <input type="file" id="rssFileInput" accept=".rss,.xml,.json" multiple style="display:none">
                     </div>
                 </div>
-                </main>
+            </main>
 
             <footer class="mini-player is-empty" id="miniPlayer" onclick="window.expandPlayer()">
                 <div class="mini-player-content">
@@ -155,6 +209,27 @@
         const speeds = [1.0, 1.25, 1.5, 2.0];
         let currentSpeedIndex = 0;
         let currentPlayingIdx = { pod: -1, ep: -1 };
+
+        // 菜单切换逻辑
+        const moreMenu = document.getElementById('moreMenu');
+        const menuToggleBtn = document.getElementById('menuToggleBtn');
+        
+        menuToggleBtn.onclick = (e) => {
+            e.stopPropagation();
+            moreMenu.classList.toggle('show');
+        };
+
+        document.addEventListener('click', () => {
+            moreMenu.classList.remove('show');
+        });
+
+        document.getElementById('importAction').onclick = () => {
+            document.getElementById('rssFileInput').click();
+        };
+
+        document.getElementById('exportAction').onclick = () => {
+            handleExport();
+        };
 
         window.expandPlayer = () => {
             const mini = document.getElementById('miniPlayer');
@@ -271,7 +346,6 @@
                 try {
                     const text = await file.text();
                     
-                    // 新增：处理 JSON 备份文件导入
                     if (file.name.toLowerCase().endsWith('.json')) {
                         const backupData = JSON.parse(text);
                         if (Array.isArray(backupData)) {
@@ -280,7 +354,6 @@
                                 if (existingIdx === -1) {
                                     allPodcastsData.push(newPod);
                                 } else {
-                                    // 如果已存在，则更新“已读”状态
                                     newPod.episodes.forEach(newEp => {
                                         const oldEp = allPodcastsData[existingIdx].episodes.find(e => e.audioUrl === newEp.audioUrl);
                                         if (oldEp) oldEp.isFinished = newEp.isFinished;
@@ -291,7 +364,6 @@
                         continue;
                     }
 
-                    // 原有的 XML/RSS 解析逻辑
                     const dom = new DOMParser().parseFromString(text, "text/xml");
                     const channel = dom.querySelector("channel");
                     if (!channel) continue;
@@ -319,7 +391,6 @@
             renderPodcastList();
         }
 
-        // 新增：导出功能
         function handleExport() {
             if (allPodcastsData.length === 0) {
                 alert("资料库为空，无需导出");
@@ -382,9 +453,6 @@
             
             const editBtn = document.getElementById('editBtn');
             if(editBtn) editBtn.onclick = (e) => { e.stopPropagation(); document.body.classList.toggle('edit-mode'); };
-
-            const exportBtn = document.getElementById('exportBtn');
-            if(exportBtn) exportBtn.onclick = handleExport;
 
             const range = document.getElementById('progressRange');
             if(range) range.oninput = (e) => PlayerCore.seek(e.target.value);
