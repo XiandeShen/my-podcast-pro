@@ -28,10 +28,8 @@
         .brand-icon-pro { width: 32px; height: 32px; }
         #brandTitle { font-size: 24px; font-weight: 800; margin: 0; }
         
-        /* 菜单容器样式 */
         .header-actions { display: flex; gap: 8px; position: relative; }
         
-        /* 二级菜单样式 */
         .dropdown-menu {
             position: absolute;
             top: 45px;
@@ -69,6 +67,11 @@
         .menu-item:active { background: rgba(120,120,120,0.1); }
         .menu-item svg { opacity: 0.7; }
         .menu-divider { height: 0.5px; background: var(--border-light); margin: 4px 8px; }
+
+        .episode-list-item.is-playing {
+            background: rgba(175, 82, 222, 0.1);
+            border: 0.5px solid rgba(175, 82, 222, 0.2);
+        }
     </style>
 </head>
 <body>
@@ -214,7 +217,6 @@
         let currentSpeedIndex = 0;
         let currentPlayingIdx = { pod: -1, ep: -1 };
 
-        // 菜单切换逻辑
         const moreMenu = document.getElementById('moreMenu');
         const menuToggleBtn = document.getElementById('menuToggleBtn');
         
@@ -235,7 +237,6 @@
             handleExport();
         };
 
-        // 深色模式逻辑
         function updateThemeUI(isDark) {
             const icon = document.getElementById('themeIcon');
             const text = document.getElementById('themeText');
@@ -279,8 +280,7 @@
 
         window.handleToggle = () => {
             if (!PlayerCore.audio.src || PlayerCore.audio.src === window.location.href) return;
-            const isPlaying = PlayerCore.toggle();
-            window.updatePlayIcons(isPlaying);
+            PlayerCore.toggle();
         };
 
         window.toggleSpeed = () => {
@@ -332,8 +332,9 @@
             modalOverlay.style.display = 'flex'; 
 
             p.episodes.forEach((ep, epIdx) => {
+                const isCurrent = currentPlayingIdx.pod === podIdx && currentPlayingIdx.ep === epIdx;
                 const item = document.createElement('div');
-                item.className = `episode-list-item ${ep.isFinished ? 'is-finished' : ''}`;
+                item.className = `episode-list-item ${ep.isFinished ? 'is-finished' : ''} ${isCurrent ? 'is-playing' : ''}`;
                 item.onclick = () => {
                     currentPlayingIdx = { pod: podIdx, ep: epIdx };
                     const cover = ep.image || p.image;
@@ -348,17 +349,15 @@
                     
                     document.getElementById('markDoneBtn').classList.toggle('is-active', !!ep.isFinished);
                     
-                    // 已彻底移除 MediaSession 相关调用
-                    
                     PlayerCore.play(ep.audioUrl);
                     PlayerCore.audio.playbackRate = speeds[currentSpeedIndex];
-                    window.updatePlayIcons(true);
+                    window.renderEpisodeList(podIdx);
                 };
                 item.innerHTML = `
                     <img class="ep-list-cover" src="${ep.image || p.image}">
                     <div class="ep-list-info">
                         <div class="ep-list-title">${ep.title}</div>
-                        <div class="ep-list-meta">${ep.isFinished ? '已听完' : '播放单集'}</div>
+                        <div class="ep-list-meta">${ep.isFinished ? '已听完' : (isCurrent ? '正在播放' : '播放单集')}</div>
                     </div>
                     ${ep.isFinished ? '<div class="finished-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg></div>' : ''}
                 `;
@@ -393,22 +392,31 @@
                     const dom = new DOMParser().parseFromString(text, "text/xml");
                     const channel = dom.querySelector("channel");
                     if (!channel) continue;
+                    
                     const getImg = (el) => {
-                        const i = el.getElementsByTagName("itunes:image")[0];
-                        return i ? i.getAttribute("href") : (el.querySelector("image > url")?.textContent || "");
+                        const itImg = el.getElementsByTagName("itunes:image")[0];
+                        if (itImg) return itImg.getAttribute("href");
+                        const stdImg = el.querySelector("image > url");
+                        return stdImg ? stdImg.textContent : "";
                     };
+
+                    const podcastImage = getImg(channel);
                     const pod = {
                         title: channel.querySelector("title")?.textContent || "未知播客",
                         author: channel.querySelector("itunes\\:author, author")?.textContent || "未知作者",
-                        image: getImg(channel),
+                        image: podcastImage,
                         episodes: Array.from(dom.querySelectorAll("item")).map(item => ({
                             title: item.querySelector("title")?.textContent,
                             audioUrl: item.querySelector("enclosure")?.getAttribute("url"),
-                            image: getImg(item) || getImg(channel),
+                            image: getImg(item) || podcastImage,
                             isFinished: false 
                         }))
                     };
-                    if (!allPodcastsData.find(x => x.title === pod.title)) allPodcastsData.push(pod);
+
+                    const existingIdx = allPodcastsData.findIndex(x => x.title === pod.title);
+                    if (existingIdx === -1) {
+                        allPodcastsData.push(pod);
+                    }
                 } catch(err) {
                     console.error("文件解析错误:", err);
                 }
@@ -418,10 +426,7 @@
         }
 
         function handleExport() {
-            if (allPodcastsData.length === 0) {
-                alert("资料库为空，无需导出");
-                return;
-            }
+            if (allPodcastsData.length === 0) return;
             const blob = new Blob([JSON.stringify(allPodcastsData, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -475,7 +480,11 @@
         document.addEventListener('DOMContentLoaded', () => {
             renderPodcastList();
 
-            // 初始化主题
+            // 监听系统/底层状态变化，更新网页图标
+            PlayerCore.onStatusChange((isPlaying) => {
+                window.updatePlayIcons(isPlaying);
+            });
+
             const savedTheme = localStorage.getItem('podcast_theme');
             if (savedTheme === 'dark') updateThemeUI(true);
 
@@ -499,7 +508,6 @@
                 if(dt) dt.innerText = tot;
             });
 
-            // 播放结束时仅更新 UI 图标
             PlayerCore.audio.onended = () => {
                 window.updatePlayIcons(false);
             };
