@@ -7,130 +7,21 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><defs><linearGradient id='podGradient' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%23AF52FF;stop-opacity:1' /><stop offset='100%' style='stop-color:%235C5CFF;stop-opacity:1' /></linearGradient></defs><rect width='200' height='200' rx='45' fill='url(%23podGradient)'/><g fill='white'><rect x='55' y='85' width='12' height='30' rx='6' opacity='0.6'/><rect x='75' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='95' y='55' width='12' height='90' rx='6'/><rect x='115' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='135' y='85' width='12' height='30' rx='6' opacity='0.6'/></g></svg>">
     <link rel="stylesheet" href="css/global.css">
     <link rel="stylesheet" href="css/player.css">
-    <style>
-        .inline-header {
-            grid-column: 1 / -1;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0 10px 0;
-            height: 30px;
-            background: transparent;
-        }
-        .header-left .brand-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            cursor: pointer;
-            transition: transform 0.2s ease;
-        }
-        .header-left .brand-wrapper:active { transform: scale(0.96); }
-        .brand-icon-pro { width: 32px; height: 32px; }
-        #brandTitle { font-size: 24px; font-weight: 800; margin: 0; }
-        
-        .header-actions { display: flex; gap: 8px; position: relative; }
-        
-        .dropdown-menu {
-            position: absolute;
-            top: 45px;
-            right: 0;
-            background: var(--menu-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: 14px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-            width: 160px;
-            display: none;
-            flex-direction: column;
-            padding: 6px;
-            z-index: 2000;
-            border: 0.5px solid var(--border-light);
-            animation: menuFade 0.2s ease-out;
-        }
-        @keyframes menuFade {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .dropdown-menu.show { display: flex; }
-        .menu-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px 14px;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-main);
-            border-radius: 10px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .menu-item:active { background: rgba(120,120,120,0.1); }
-        .menu-item svg { opacity: 0.7; }
-        .menu-divider { height: 0.5px; background: var(--border-light); margin: 4px 8px; }
-
-        .episode-list-item.is-playing {
-            background: rgba(175, 82, 222, 0.1);
-            border: 0.5px solid rgba(175, 82, 222, 0.2);
-        }
-
-        .modal-podcast-info {
-            padding: 24px 24px 20px 24px;
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-            position: relative;
-        }
-        .modal-pod-meta-row {
-            display: flex;
-            gap: 16px;
-            align-items: center;
-            padding-right: 40px;
-        }
-        .modal-pod-cover {
-            width: 80px;
-            height: 80px;
-            border-radius: 12px;
-            object-fit: cover;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        .modal-pod-text h2 {
-            margin: 0;
-            font-size: 20px;
-            font-weight: 800;
-            line-height: 1.2;
-            color: var(--text-main);
-        }
-        .modal-pod-author {
-            font-size: 14px;
-            color: var(--accent);
-            font-weight: 600;
-            margin-top: 4px;
-        }
-
-        .modal-close-btn {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: rgba(120, 120, 120, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-sub);
-            cursor: pointer;
-            transition: all 0.2s;
-            z-index: 10;
-        }
-        .modal-close-btn:active {
-            transform: scale(0.9);
-            background: rgba(120, 120, 120, 0.2);
-        }
-    </style>
 </head>
 <body>
     <div class="app-container">
+        <div id="customDialogOverlay" class="custom-dialog-overlay">
+            <div class="custom-dialog">
+                <div class="dialog-title" id="dialogTitle">提示</div>
+                <div class="dialog-msg" id="dialogMsg">消息内容</div>
+                <input type="text" id="dialogInput" class="dialog-input" style="display: none;">
+                <div class="dialog-btns">
+                    <button class="dialog-btn btn-cancel" id="dialogCancel">取消</button>
+                    <button class="dialog-btn btn-confirm" id="dialogConfirm">确定</button>
+                </div>
+            </div>
+        </div>
+
         <section class="main-layout" id="scrollContainer">
             <main class="content" id="mainGrid">
                 <div class="inline-header" id="headerAnchor">
@@ -169,17 +60,27 @@
                             
                             <div class="dropdown-menu" id="moreMenu">
                                 <div class="menu-item" id="importAction">
-                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                                    添加节目
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="2"/><path d="M12 19c-4.42 0-8-3.58-8-8 0-4.42 3.58-8 8-8s8 3.58 8 8"/><path d="M16 11c0-2.21-1.79-4-4-4s-4 1.79-4 4"/></svg>
+                                    添加订阅
+                                </div>
+                                <div class="menu-item" id="restoreUrlAction">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+                                    同步云端库
                                 </div>
                                 <div class="menu-item" id="exportAction">
                                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                                     备份资料库
                                 </div>
+
                                 <div class="menu-divider"></div>
+
                                 <div class="menu-item" id="themeToggleAction">
                                     <svg id="themeIcon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
                                     <span id="themeText">深色模式</span>
+                                </div>
+                                <div class="menu-item danger" id="clearDataAction">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                    清空资料库
                                 </div>
                             </div>
                         </div>
@@ -281,6 +182,39 @@
         let currentSpeedIndex = 0;
         let currentPlayingIdx = { pod: -1, ep: -1 };
 
+        const CustomUI = {
+            overlay: document.getElementById('customDialogOverlay'),
+            title: document.getElementById('dialogTitle'),
+            msg: document.getElementById('dialogMsg'),
+            input: document.getElementById('dialogInput'),
+            confirmBtn: document.getElementById('dialogConfirm'),
+            cancelBtn: document.getElementById('dialogCancel'),
+            
+            show({ title, msg, showInput = false, confirmText = "确定", isDanger = false, placeholder = "" }) {
+                return new Promise((resolve) => {
+                    this.title.innerText = title;
+                    this.msg.innerText = msg;
+                    this.input.style.display = showInput ? 'block' : 'none';
+                    this.input.value = "";
+                    this.input.placeholder = placeholder;
+                    this.confirmBtn.innerText = confirmText;
+                    this.confirmBtn.className = `dialog-btn ${isDanger ? 'btn-danger' : 'btn-confirm'}`;
+                    this.overlay.style.display = 'flex';
+
+                    const cleanup = (val) => {
+                        this.overlay.style.display = 'none';
+                        this.confirmBtn.onclick = null;
+                        this.cancelBtn.onclick = null;
+                        resolve(val);
+                    };
+
+                    this.confirmBtn.onclick = () => cleanup(showInput ? this.input.value : true);
+                    this.cancelBtn.onclick = () => cleanup(false);
+                });
+            },
+            alert(msg) { return this.show({ title: "提示", msg }); }
+        };
+
         const moreMenu = document.getElementById('moreMenu');
         const menuToggleBtn = document.getElementById('menuToggleBtn');
         
@@ -300,6 +234,108 @@
         document.getElementById('exportAction').onclick = () => {
             handleExport();
         };
+
+        document.getElementById('restoreUrlAction').onclick = () => {
+            handleUrlRestore();
+        };
+
+        document.getElementById('clearDataAction').onclick = () => {
+            handleClearData();
+        };
+
+        async function handleClearData() {
+            if (allPodcastsData.length === 0) {
+                CustomUI.alert("资料库已经是空的。");
+                return;
+            }
+            const confirmed = await CustomUI.show({
+                title: "清空资料库",
+                msg: "确定要删除所有节目吗？此操作不可撤销。",
+                confirmText: "清空",
+                isDanger: true
+            });
+            if (confirmed) {
+                allPodcastsData = [];
+                localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
+                renderPodcastList();
+                
+                // --- 彻底重置播放状态 ---
+                PlayerCore.audio.pause();
+                PlayerCore.audio.src = "";
+                
+                const mini = document.getElementById('miniPlayer');
+                const miniCover = document.getElementById('miniCover');
+                const defaultIcon = "data:image/svg+xml,<svg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><defs><linearGradient id='podGradient' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%23AF52FF;stop-opacity:1' /><stop offset='100%' style='stop-color:%235C5CFF;stop-opacity:1' /></linearGradient></defs><rect width='200' height='200' rx='0' fill='url(%23podGradient)'/><g fill='white'><rect x='55' y='85' width='12' height='30' rx='6' opacity='0.6'/><rect x='75' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='95' y='55' width='12' height='90' rx='6'/><rect x='115' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='135' y='85' width='12' height='30' rx='6' opacity='0.6'/></g></svg>";
+                
+                mini.classList.add('is-empty'); // 隐藏/重置迷你播放条
+                miniCover.src = defaultIcon; // 恢复默认图标
+                document.getElementById('miniTitle').innerText = "请选择节目";
+                document.getElementById('miniAuthor').innerText = "PODCAST";
+                
+                // 重置当前播放索引
+                currentPlayingIdx = { pod: -1, ep: -1 };
+                
+                // 重置大播放器界面
+                document.getElementById('playerCover').src = "";
+                document.getElementById('playerTitle').innerText = "未播放";
+                document.getElementById('playerAuthor').innerText = "作者";
+                document.getElementById('dynamicBg').style.backgroundImage = "";
+            }
+        }
+
+        async function handleUrlRestore() {
+            let res = await CustomUI.show({
+                title: "同步云端库",
+                msg: "请输入 JSON 备份文件的直链地址。留空将使用默认地址恢复。",
+                showInput: true,
+                placeholder: "https://..."
+            });
+            
+            if (res === false) return;
+            
+            let url = res.trim() || "https://xiandeshen.github.io/podcast/default.json";
+
+            if (url.includes("github.com") && !url.includes("raw.githubusercontent.com")) {
+                url = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/");
+            }
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("无法连接");
+                const backupData = await response.json();
+                
+                if (Array.isArray(backupData)) {
+                    const confirmed = await CustomUI.show({
+                        title: "确认同步",
+                        msg: `已解析到 ${backupData.length} 个节目。是否合并到本地？`
+                    });
+                    if (confirmed) {
+                        backupData.forEach(newPod => {
+                            const existingIdx = allPodcastsData.findIndex(x => x.title === newPod.title);
+                            if (existingIdx === -1) allPodcastsData.push(newPod);
+                        });
+                        localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
+                        renderPodcastList();
+                    }
+                }
+            } catch (err) {
+                CustomUI.alert("同步失败，请检查链接有效性。");
+            }
+        }
+
+        function handleExport() {
+            if (allPodcastsData.length === 0) {
+                CustomUI.alert("资料库为空，无需备份。");
+                return;
+            }
+            const blob = new Blob([JSON.stringify(allPodcastsData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `podcast_backup_${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
 
         function updateThemeUI(isDark) {
             const icon = document.getElementById('themeIcon');
@@ -420,7 +456,6 @@
                     window.renderEpisodeList(podIdx);
                 };
 
-                // 此处已彻底删除右侧的 finished-check 按钮 HTML
                 item.innerHTML = `
                     <img class="ep-list-cover" src="${ep.image || p.image}">
                     <div class="ep-list-info">
@@ -481,17 +516,6 @@
             }
             localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
             renderPodcastList();
-        }
-
-        function handleExport() {
-            if (allPodcastsData.length === 0) return;
-            const blob = new Blob([JSON.stringify(allPodcastsData, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `podcast_backup_${new Date().toISOString().slice(0,10)}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
         }
 
         function renderPodcastList() {
