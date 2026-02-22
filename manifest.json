@@ -1,0 +1,29 @@
+{
+  "id": "io.github.shenxiande.podcast",
+  "name": "Podcast",
+  "short_name": "Podcast",
+  "description": "一款极简主义的播客播放器。界面清新优雅，支持 RSS订阅解析，提供沉浸式的后台播放体验，让您专注享受优质的播客内容。本应用为开源项目，由 沈先德开发并托管于 GitHub。",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#af52de",
+  "orientation": "portrait",
+  "scope": "./",
+  "icons": [
+    {
+      "src": "podcast-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "./index.html",
+      "accept": {
+        "application/json": [".json"],
+        "text/css": [".css"]
+      }
+    }
+  ]
+}
