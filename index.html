@@ -349,8 +349,9 @@
                     
                     document.getElementById('markDoneBtn').classList.toggle('is-active', !!ep.isFinished);
                     
-                    PlayerCore.play(ep.audioUrl);
-                    PlayerCore.audio.playbackRate = speeds[currentSpeedIndex];
+                    // 传入音频地址及元数据
+                    PlayerCore.play(ep.audioUrl, ep.title, p.title, cover);
+                    
                     window.renderEpisodeList(podIdx);
                 };
                 item.innerHTML = `
@@ -480,7 +481,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             renderPodcastList();
 
-            // 监听系统/底层状态变化，更新网页图标
+            // 监听系统状态变化，同步 UI
             PlayerCore.onStatusChange((isPlaying) => {
                 window.updatePlayIcons(isPlaying);
             });
