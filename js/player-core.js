@@ -11,11 +11,12 @@ export const PlayerCore = {
     _onTimeUpdate: null,
     _onStatusChange: null,
 
-    play(url) {
+    play(url, title, artist, cover) {
         if (!url) return;
 
         const savedRate = this.audio.playbackRate;
         
+        // 只有地址变化时才重新加载
         if (this.audio.src !== url) {
             this.audio.src = url;
             this.audio.load();
@@ -26,11 +27,13 @@ export const PlayerCore = {
             playPromise
                 .then(() => {
                     this.audio.playbackRate = savedRate;
+                    // 仅注入元数据（封面标题），不碰进度控制逻辑，防止时间不同步
+                    this.updateMetadataOnly(title, artist, cover);
                 })
                 .catch(error => console.error("Playback Error:", error));
         }
 
-        // 时间更新监听
+        // 时间更新仅用于网页 UI
         this.audio.ontimeupdate = () => {
             const cur = this.audio.currentTime;
             const dur = this.audio.duration;
@@ -39,7 +42,7 @@ export const PlayerCore = {
             }
         };
 
-        // 核心修复：监听系统级/底层音频状态变化，实现UI联动
+        // 监听原生事件，实现网页按钮与系统/蓝牙的联动
         this.audio.onplay = () => {
             if (this._onStatusChange) this._onStatusChange(true);
         };
@@ -50,13 +53,30 @@ export const PlayerCore = {
         this.audio.oncanplay = () => {
             this.audio.playbackRate = savedRate;
         };
-
-        // 清理/重置其他不必要的事件
-        this.audio.onloadedmetadata = null;
-        this.audio.onseeked = null;
     },
 
-    // 注册 UI 状态同步回调
+    // 核心思路：只更新信息展示，不接管系统的播放位置计算
+    updateMetadataOnly(title, artist, cover) {
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: title || "未知剧集",
+                artist: artist || "Podcast",
+                album: artist || "Podcast",
+                artwork: [
+                    { src: cover, sizes: '96x96',   type: 'image/png' },
+                    { src: cover, sizes: '128x128', type: 'image/png' },
+                    { src: cover, sizes: '192x192', type: 'image/png' },
+                    { src: cover, sizes: '256x256', type: 'image/png' },
+                    { src: cover, sizes: '384x384', type: 'image/png' },
+                    { src: cover, sizes: '512x512', type: 'image/png' },
+                ]
+            });
+            
+            // 我们不设置 setPositionState 
+            // 这样系统会自动根据 Audio 对象的实际进度来显示时间，从而保证 100% 同步
+        }
+    },
+
     onStatusChange(cb) {
         this._onStatusChange = cb;
     },
@@ -86,9 +106,5 @@ export const PlayerCore = {
         const m = Math.floor(s / 60);
         const sec = Math.floor(s % 60);
         return `${m}:${sec < 10 ? '0' : ''}${sec}`;
-    },
-
-    // 占位接口
-    updateMetadata(title, artist, cover) {},
-    updateMediaSessionState() {}
+    }
 };
