@@ -7,7 +7,7 @@
     "Music"
   ],
   "start_url": "./index.html",
-  "display": "fullscreen",
+  "display": "minimal-ui",
   "background_color": "#FFFFFF",
   "theme_color": "#f2f2f7",
   "orientation": "portrait",
