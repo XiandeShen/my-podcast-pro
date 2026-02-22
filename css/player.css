@@ -69,7 +69,7 @@
 .p-close-btn:active { transform: scale(0.8); background: rgba(255,255,255,0.4); }
 
 .p-main-content { 
-    flex: 1; 
+    flex: 0.9; 
     display: flex; 
     flex-direction: column; 
     align-items: center; 
