@@ -16,7 +16,6 @@ export const PlayerCore = {
 
         const savedRate = this.audio.playbackRate;
         
-        // 只有地址变化时才重新加载
         if (this.audio.src !== url) {
             this.audio.src = url;
             this.audio.load();
@@ -27,13 +26,12 @@ export const PlayerCore = {
             playPromise
                 .then(() => {
                     this.audio.playbackRate = savedRate;
-                    // 仅注入元数据（封面标题），不碰进度控制逻辑，防止时间不同步
+                    // 仅注入元数据（封面标题），不设置 setPositionState，保证时间同步
                     this.updateMetadataOnly(title, artist, cover);
                 })
                 .catch(error => console.error("Playback Error:", error));
         }
 
-        // 时间更新仅用于网页 UI
         this.audio.ontimeupdate = () => {
             const cur = this.audio.currentTime;
             const dur = this.audio.duration;
@@ -42,7 +40,6 @@ export const PlayerCore = {
             }
         };
 
-        // 监听原生事件，实现网页按钮与系统/蓝牙的联动
         this.audio.onplay = () => {
             if (this._onStatusChange) this._onStatusChange(true);
         };
@@ -55,7 +52,6 @@ export const PlayerCore = {
         };
     },
 
-    // 核心思路：只更新信息展示，不接管系统的播放位置计算
     updateMetadataOnly(title, artist, cover) {
         if ('mediaSession' in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
@@ -71,36 +67,20 @@ export const PlayerCore = {
                     { src: cover, sizes: '512x512', type: 'image/png' },
                 ]
             });
-            
-            // 我们不设置 setPositionState 
-            // 这样系统会自动根据 Audio 对象的实际进度来显示时间，从而保证 100% 同步
         }
     },
 
-    onStatusChange(cb) {
-        this._onStatusChange = cb;
-    },
-
-    onTimeUpdate(cb) {
-        this._onTimeUpdate = cb;
-    },
-
+    onStatusChange(cb) { this._onStatusChange = cb; },
+    onTimeUpdate(cb) { this._onTimeUpdate = cb; },
     toggle() {
-        if (this.audio.paused) {
-            this.audio.play();
-            return true;
-        } else {
-            this.audio.pause();
-            return false;
-        }
+        if (this.audio.paused) { this.audio.play(); return true; } 
+        else { this.audio.pause(); return false; }
     },
-
     seek(pct) {
         if (this.audio.duration && Number.isFinite(this.audio.duration)) {
             this.audio.currentTime = (pct / 100) * this.audio.duration;
         }
     },
-
     format(s) {
         if (isNaN(s) || !Number.isFinite(s)) return "0:00";
         const m = Math.floor(s / 60);
