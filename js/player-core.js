@@ -3,28 +3,34 @@
 const sysAudio = new Audio();
 sysAudio.id = "core-audio-player";
 sysAudio.style.display = "none";
+sysAudio.preload = "auto";
 document.body.appendChild(sysAudio);
 
 export const PlayerCore = {
     audio: sysAudio,
     _onTimeUpdate: null,
+    _onStatusChange: null,
 
     play(url) {
         if (!url) return;
 
-        const currentRate = this.audio.playbackRate;
-        this.audio.src = url;
+        const savedRate = this.audio.playbackRate;
+        
+        if (this.audio.src !== url) {
+            this.audio.src = url;
+            this.audio.load();
+        }
 
         const playPromise = this.audio.play();
         if (playPromise !== undefined) {
             playPromise
                 .then(() => {
-                    this.audio.playbackRate = currentRate;
+                    this.audio.playbackRate = savedRate;
                 })
                 .catch(error => console.error("Playback Error:", error));
         }
 
-        // 仅保留 UI 时间更新，移除所有 MediaSession 相关代码
+        // 时间更新监听
         this.audio.ontimeupdate = () => {
             const cur = this.audio.currentTime;
             const dur = this.audio.duration;
@@ -33,19 +39,27 @@ export const PlayerCore = {
             }
         };
 
-        // 其他事件无需处理
+        // 核心修复：监听系统级/底层音频状态变化，实现UI联动
+        this.audio.onplay = () => {
+            if (this._onStatusChange) this._onStatusChange(true);
+        };
+        this.audio.onpause = () => {
+            if (this._onStatusChange) this._onStatusChange(false);
+        };
+
+        this.audio.oncanplay = () => {
+            this.audio.playbackRate = savedRate;
+        };
+
+        // 清理/重置其他不必要的事件
         this.audio.onloadedmetadata = null;
-        this.audio.onplay = null;
-        this.audio.onpause = null;
         this.audio.onseeked = null;
-        this.audio.onratechange = null;
-        this.audio.onended = null;
     },
 
-    // 所有 MediaSession 相关方法置空
-    updateMetadata(title, artist, cover) {},
-
-    updateMediaSessionState() {},
+    // 注册 UI 状态同步回调
+    onStatusChange(cb) {
+        this._onStatusChange = cb;
+    },
 
     onTimeUpdate(cb) {
         this._onTimeUpdate = cb;
@@ -72,5 +86,9 @@ export const PlayerCore = {
         const m = Math.floor(s / 60);
         const sec = Math.floor(s % 60);
         return `${m}:${sec < 10 ? '0' : ''}${sec}`;
-    }
+    },
+
+    // 占位接口
+    updateMetadata(title, artist, cover) {},
+    updateMediaSessionState() {}
 };
