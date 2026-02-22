@@ -5,125 +5,522 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Podcast</title>
     <link rel="manifest" href="manifest.json">
-    <meta id="theme-meta" name="theme-color" content="#f2f2f7">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><defs><linearGradient id='podGradient' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%23AF52FF;stop-opacity:1' /><stop offset='100%' style='stop-color:%235C5CFF;stop-opacity:1' /></linearGradient></defs><rect width='200' height='200' rx='45' fill='url(%23podGradient)'/><g fill='white'><rect x='55' y='85' width='12' height='30' rx='6' opacity='0.6'/><rect x='75' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='95' y='55' width='12' height='90' rx='6'/><rect x='115' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='135' y='85' width='12' height='30' rx='6' opacity='0.6'/></g></svg>">
     <link rel="stylesheet" href="css/global.css">
     <link rel="stylesheet" href="css/player.css">
+    <style>
+        .inline-header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0 10px 0;
+            height: 30px;
+            background: transparent;
+        }
+        .header-left .brand-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .header-left .brand-wrapper:active { transform: scale(0.96); }
+        .brand-icon-pro { width: 32px; height: 32px; }
+        #brandTitle { font-size: 24px; font-weight: 800; margin: 0; }
+        
+        .header-actions { display: flex; gap: 8px; position: relative; }
+        
+        .dropdown-menu {
+            position: absolute;
+            top: 45px;
+            right: 0;
+            background: var(--menu-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 14px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            width: 160px;
+            display: none;
+            flex-direction: column;
+            padding: 6px;
+            z-index: 2000;
+            border: 0.5px solid var(--border-light);
+            animation: menuFade 0.2s ease-out;
+        }
+        @keyframes menuFade {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .dropdown-menu.show { display: flex; }
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-main);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .menu-item:active { background: rgba(120,120,120,0.1); }
+        .menu-item svg { opacity: 0.7; }
+        .menu-divider { height: 0.5px; background: var(--border-light); margin: 4px 8px; }
+
+        .episode-list-item.is-playing {
+            background: rgba(175, 82, 222, 0.1);
+            border: 0.5px solid rgba(175, 82, 222, 0.2);
+        }
+
+        .modal-podcast-info {
+            padding: 24px 24px 20px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            position: relative;
+        }
+        .modal-pod-meta-row {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            padding-right: 40px;
+        }
+        .modal-pod-cover {
+            width: 80px;
+            height: 80px;
+            border-radius: 12px;
+            object-fit: cover;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .modal-pod-text h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 800;
+            line-height: 1.2;
+            color: var(--text-main);
+        }
+        .modal-pod-author {
+            font-size: 14px;
+            color: var(--accent);
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(120, 120, 120, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-sub);
+            cursor: pointer;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        .modal-close-btn:active {
+            transform: scale(0.9);
+            background: rgba(120, 120, 120, 0.2);
+        }
+    </style>
 </head>
 <body>
-    <div class="inline-header">
-        <div class="header-left">
-            <div class="brand-wrapper" onclick="location.reload()">
-                <div class="brand-icon-pro">
-                    <svg viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="url(#headerGrad)"/><defs><linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#AF52FF"/><stop offset="100%" style="stop-color:#5C5CFF"/></linearGradient></defs><g fill="white"><rect x="30" y="45" width="8" height="20" rx="4" opacity="0.6"/><rect x="45" y="35" width="8" height="40" rx="4"/><rect x="60" y="45" width="8" height="20" rx="4" opacity="0.6"/></g></svg>
+    <div class="app-container">
+        <section class="main-layout" id="scrollContainer">
+            <main class="content" id="mainGrid">
+                <div class="inline-header" id="headerAnchor">
+                    <div class="header-left">
+                        <div class="brand-wrapper" onclick="location.reload()">
+                            <div class="brand-icon-pro">
+                                <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <linearGradient id="podGradientHeader" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#AF52FF;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#5C5CFF;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                    <rect width="200" height="200" rx="45" fill="url(#podGradientHeader)"/>
+                                    <g fill="white">
+                                        <rect x="55" y="85" width="12" height="30" rx="6" opacity="0.6"/>
+                                        <rect x="75" y="70" width="12" height="60" rx="6" opacity="0.8"/>
+                                        <rect x="95" y="55" width="12" height="90" rx="6"/>
+                                        <rect x="115" y="70" width="12" height="60" rx="6" opacity="0.8"/>
+                                        <rect x="135" y="85" width="12" height="30" rx="6" opacity="0.6"/>
+                                    </g>
+                                </svg>
+                            </div>
+                            <h1 id="brandTitle">PODCAST</h1>
+                        </div>
+                    </div>
+                    <div class="header-actions">
+                        <button class="action-btn" id="editBtn" title="管理资料库">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        </button>
+                        
+                        <div style="position: relative;">
+                            <button class="action-btn" id="menuToggleBtn">
+                                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                            </button>
+                            
+                            <div class="dropdown-menu" id="moreMenu">
+                                <div class="menu-item" id="importAction">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                    添加节目
+                                </div>
+                                <div class="menu-item" id="exportAction">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    备份资料库
+                                </div>
+                                <div class="menu-divider"></div>
+                                <div class="menu-item" id="themeToggleAction">
+                                    <svg id="themeIcon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                                    <span id="themeText">深色模式</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <input type="file" id="rssFileInput" accept=".rss,.xml,.json" multiple style="display:none">
+                    </div>
                 </div>
-                <span class="brand-text">Podcast</span>
+            </main>
+
+            <footer class="mini-player is-empty" id="miniPlayer" onclick="window.expandPlayer()">
+                <div class="mini-player-content">
+                    <div class="mini-info">
+                        <img id="miniCover" src="data:image/svg+xml,<svg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><defs><linearGradient id='podGradient' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%23AF52FF;stop-opacity:1' /><stop offset='100%' style='stop-color:%235C5CFF;stop-opacity:1' /></linearGradient></defs><rect width='200' height='200' rx='0' fill='url(%23podGradient)'/><g fill='white'><rect x='55' y='85' width='12' height='30' rx='6' opacity='0.6'/><rect x='75' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='95' y='55' width='12' height='90' rx='6'/><rect x='115' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='135' y='85' width='12' height='30' rx='6' opacity='0.6'/></g></svg>">
+                        <div class="mini-text">
+                            <div id="miniTitle">请选择节目</div>
+                            <div id="miniAuthor">PODCAST</div>
+                        </div>
+                    </div>
+                    <div class="mini-controls">
+                        <button class="mini-play-btn" id="miniPlayBtn" onclick="event.stopPropagation(); window.handleToggle()">
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                        </button>
+                        <button class="mini-speed-btn-text" id="miniSpeedBtn" onclick="event.stopPropagation(); window.toggleSpeed()">1.0x</button>
+                    </div>
+                </div>
+                <div class="mini-progress-bar"><div class="mini-progress-fill" id="miniProgressFill"></div></div>
+            </footer>
+        </section>
+    </div>
+
+    <div id="episodeModalOverlay" class="modal-overlay" onclick="window.closeModal()">
+        <div class="episode-modal" onclick="event.stopPropagation()">
+            <div class="modal-close-btn" onclick="window.closeModal()">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </div>
+            
+            <div class="modal-podcast-info" id="modalPodInfo">
+                <div class="modal-pod-meta-row">
+                    <img id="modalPodCover" class="modal-pod-cover" src="">
+                    <div class="modal-pod-text">
+                        <h2 id="modalPodTitle">播客节目</h2>
+                        <div id="modalPodAuthor" class="modal-pod-author">作者名称</div>
+                    </div>
+                </div>
+            </div>
+            <div id="modalEpisodeList" class="modal-content"></div>
+        </div>
+    </div>
+
+    <div id="playerOverlay" class="p-overlay">
+        <div id="dynamicBg" class="p-dynamic-bg"></div>
+        <div class="p-header-nav">
+            <button class="p-close-btn" onclick="window.closePlayer()">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+        </div>
+        <div class="p-main-content">
+            <div class="p-cover-wrap"><img id="playerCover" src=""></div>
+            
+            <div class="p-controls-area">
+                <div class="p-info-stack">
+                    <h2 id="playerTitle">未播放</h2>
+                    <p id="playerAuthor">作者</p>
+                </div>
+                
+                <div class="p-progress-wrap">
+                    <input type="range" class="p-slider" value="0" id="progressRange">
+                    <div class="p-time-info"><span id="currentTime">0:00</span><span id="durationTime">0:00</span></div>
+                </div>
+
+                <div class="p-controls">
+                    <button class="p-btn-sec" onclick="window.seekOffset(-15)"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2.5 2v6h6M2.66 15.57a10 10 0 1 0 .57-8.38"/><text x="12" y="15.5" font-size="7" font-weight="900" text-anchor="middle" fill="currentColor" stroke="none">15</text></svg></button>
+                    <button class="p-btn-play-large" id="mainPlayBtn" onclick="window.handleToggle()"><svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+                    <button class="p-btn-sec" onclick="window.seekOffset(15)"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/><text x="12" y="15.5" font-size="7" font-weight="900" text-anchor="middle" fill="currentColor" stroke="none">15</text></svg></button>
+                </div>
+
+                <div class="p-sub-actions">
+                    <button class="p-action-pill" id="fullSpeedBtn" onclick="window.toggleSpeed()">1.0x</button>
+                    <button class="p-action-pill" id="markDoneBtn" onclick="window.toggleCurrentEpisodeDone()">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="3.5" style="margin-right:4px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span>已读</span>
+                    </button>
+                </div>
             </div>
         </div>
-        <div class="header-right">
-            <button id="themeToggle" class="icon-btn-circle" title="切换主题">🌓</button>
-            <button id="editBtn" class="icon-btn-circle">编辑</button>
-            <button class="icon-btn-circle" onclick="document.getElementById('rssFileInput').click()">＋</button>
-        </div>
     </div>
-
-    <input type="file" id="rssFileInput" accept=".json" style="display:none">
-
-    <main id="podcastGrid" class="podcast-grid"></main>
-
-    <div id="episodeListOverlay" class="episodes-list">
-        <div class="list-header">
-            <button class="back-btn" onclick="closeEpisodeList()">✕</button>
-            <h2 id="listTitle" class="list-header-title">单集列表</h2>
-        </div>
-        <div id="epListScroll" class="scroll-area"></div>
-    </div>
-
-    <div id="playerOverlay" class="player-overlay"></div>
 
     <script type="module">
         import { PlayerCore } from './js/player-core.js';
-        import { UI } from './js/ui-controller.js';
+        
+        let allPodcastsData = [];
+        try {
+            allPodcastsData = JSON.parse(localStorage.getItem('podcast_db') || '[]');
+        } catch(e) {
+            allPodcastsData = [];
+        }
 
-        // 状态栏与主题同步切换逻辑
-        window.updateThemeUI = function(isDark) {
-            const themeMeta = document.getElementById('theme-meta');
+        const speeds = [1.0, 1.25, 1.5, 2.0];
+        let currentSpeedIndex = 0;
+        let currentPlayingIdx = { pod: -1, ep: -1 };
+
+        const moreMenu = document.getElementById('moreMenu');
+        const menuToggleBtn = document.getElementById('menuToggleBtn');
+        
+        menuToggleBtn.onclick = (e) => {
+            e.stopPropagation();
+            moreMenu.classList.toggle('show');
+        };
+
+        document.addEventListener('click', () => {
+            moreMenu.classList.remove('show');
+        });
+
+        document.getElementById('importAction').onclick = () => {
+            document.getElementById('rssFileInput').click();
+        };
+
+        document.getElementById('exportAction').onclick = () => {
+            handleExport();
+        };
+
+        function updateThemeUI(isDark) {
+            const icon = document.getElementById('themeIcon');
+            const text = document.getElementById('themeText');
             if (isDark) {
                 document.body.classList.add('dark-mode');
-                if(themeMeta) themeMeta.setAttribute('content', '#000000');
-                localStorage.setItem('podcast_theme', 'dark');
+                text.innerText = '浅色模式';
+                icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
             } else {
                 document.body.classList.remove('dark-mode');
-                if(themeMeta) themeMeta.setAttribute('content', '#f2f2f7');
-                localStorage.setItem('podcast_theme', 'light');
+                text.innerText = '深色模式';
+                icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
             }
+        }
+
+        document.getElementById('themeToggleAction').onclick = () => {
+            const isDark = !document.body.classList.contains('dark-mode');
+            updateThemeUI(isDark);
+            localStorage.setItem('podcast_theme', isDark ? 'dark' : 'light');
+        };
+
+        window.expandPlayer = () => {
+            const mini = document.getElementById('miniPlayer');
+            if (mini && mini.classList.contains('is-empty')) {
+                mini.classList.add('mini-shake');
+                setTimeout(() => mini.classList.remove('mini-shake'), 300);
+            } else {
+                document.getElementById('playerOverlay').classList.add('is-active');
+            }
+        };
+        window.closePlayer = () => document.getElementById('playerOverlay').classList.remove('is-active');
+        
+        window.closeModal = () => {
+            const modal = document.querySelector('.episode-modal');
+            modal.style.transform = 'translateY(30px)';
+            modal.style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('episodeModalOverlay').style.display = 'none';
+                modal.style.transform = '';
+                modal.style.opacity = '';
+            }, 250);
+        };
+
+        window.handleToggle = () => {
+            if (!PlayerCore.audio.src || PlayerCore.audio.src === window.location.href) return;
+            PlayerCore.toggle();
+        };
+
+        window.toggleSpeed = () => {
+            currentSpeedIndex = (currentSpeedIndex + 1) % speeds.length;
+            const newSpeed = speeds[currentSpeedIndex];
+            PlayerCore.audio.playbackRate = newSpeed;
+            const text = `${newSpeed.toFixed(1)}x`;
+            document.getElementById('miniSpeedBtn').innerText = text;
+            document.getElementById('fullSpeedBtn').innerText = text;
+        };
+
+        window.seekOffset = (s) => {
+            if(PlayerCore.audio.duration) PlayerCore.audio.currentTime = Math.max(0, Math.min(PlayerCore.audio.currentTime+s, PlayerCore.audio.duration));
+        };
+
+        window.updatePlayIcons = (isPlaying) => {
+            const playSvg = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+            const pauseSvg = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+            document.getElementById('miniPlayBtn').innerHTML = isPlaying ? pauseSvg : playSvg;
+            document.getElementById('mainPlayBtn').innerHTML = isPlaying ? 
+                pauseSvg.replace('width="22"','width="40"').replace('height="22"','height="40"') : 
+                playSvg.replace('width="22"','width="40"').replace('height="22"','height="40"');
+        };
+
+        window.toggleEpisodeDone = (podIdx, epIdx) => {
+            const episode = allPodcastsData[podIdx].episodes[epIdx];
+            episode.isFinished = !episode.isFinished;
+            if(currentPlayingIdx.pod === podIdx && currentPlayingIdx.ep === epIdx) {
+                document.getElementById('markDoneBtn').classList.toggle('is-active', episode.isFinished);
+            }
+            localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
+            window.renderEpisodeList(podIdx);
+        };
+
+        window.toggleCurrentEpisodeDone = () => {
+            const { pod, ep } = currentPlayingIdx;
+            if(pod === -1 || ep === -1) return;
+            window.toggleEpisodeDone(pod, ep);
+        };
+
+        window.renderEpisodeList = (podIdx) => {
+            const p = allPodcastsData[podIdx];
+            if(!p) return;
+            const modalOverlay = document.getElementById('episodeModalOverlay');
+            const listContainer = document.getElementById('modalEpisodeList');
+            
+            document.getElementById('modalPodTitle').innerText = p.title;
+            document.getElementById('modalPodAuthor').innerText = p.author;
+            document.getElementById('modalPodCover').src = p.image;
+            
+            listContainer.innerHTML = ""; 
+            modalOverlay.style.display = 'flex'; 
+
+            p.episodes.forEach((ep, epIdx) => {
+                const isCurrent = currentPlayingIdx.pod === podIdx && currentPlayingIdx.ep === epIdx;
+                const item = document.createElement('div');
+                item.className = `episode-list-item ${ep.isFinished ? 'is-finished' : ''} ${isCurrent ? 'is-playing' : ''}`;
+                
+                item.onclick = () => {
+                    currentPlayingIdx = { pod: podIdx, ep: epIdx };
+                    const cover = ep.image || p.image;
+                    document.getElementById('miniPlayer').classList.remove('is-empty');
+                    document.getElementById('miniCover').src = cover;
+                    document.getElementById('miniTitle').innerText = ep.title;
+                    document.getElementById('miniAuthor').innerText = p.title;
+                    document.getElementById('playerCover').src = cover;
+                    document.getElementById('playerTitle').innerText = ep.title;
+                    document.getElementById('playerAuthor').innerText = p.title;
+                    document.getElementById('dynamicBg').style.backgroundImage = `url('${cover}')`;
+                    document.getElementById('markDoneBtn').classList.toggle('is-active', !!ep.isFinished);
+                    PlayerCore.play(ep.audioUrl, ep.title, p.title, cover);
+                    window.renderEpisodeList(podIdx);
+                };
+
+                // 此处已彻底删除右侧的 finished-check 按钮 HTML
+                item.innerHTML = `
+                    <img class="ep-list-cover" src="${ep.image || p.image}">
+                    <div class="ep-list-info">
+                        <div class="ep-list-title">${ep.title}</div>
+                        <div class="ep-list-meta">${ep.isFinished ? '已听完' : (isCurrent ? '正在播放' : '播放单集')}</div>
+                    </div>
+                `;
+                listContainer.appendChild(item);
+            });
         };
 
         async function handleFileUpload(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => {
+            const files = Array.from(e.target.files);
+            for (const file of files) {
                 try {
-                    const data = JSON.parse(event.target.result);
-                    const list = JSON.parse(localStorage.getItem('my_podcasts') || '[]');
-                    list.push(data);
-                    localStorage.setItem('my_podcasts', JSON.stringify(list));
-                    renderPodcastList();
-                } catch(err) { alert('JSON 格式错误，请检查文件内容'); }
-            };
-            reader.readAsText(file);
+                    const text = await file.text();
+                    if (file.name.toLowerCase().endsWith('.json')) {
+                        const backupData = JSON.parse(text);
+                        if (Array.isArray(backupData)) {
+                            backupData.forEach(newPod => {
+                                const existingIdx = allPodcastsData.findIndex(x => x.title === newPod.title);
+                                if (existingIdx === -1) {
+                                    allPodcastsData.push(newPod);
+                                }
+                            });
+                        }
+                        continue;
+                    }
+                    const dom = new DOMParser().parseFromString(text, "text/xml");
+                    const channel = dom.querySelector("channel");
+                    if (!channel) continue;
+                    
+                    const getImg = (el) => {
+                        const itImg = el.getElementsByTagName("itunes:image")[0];
+                        if (itImg) return itImg.getAttribute("href");
+                        const stdImg = el.querySelector("image > url");
+                        return stdImg ? stdImg.textContent : "";
+                    };
+
+                    const podcastImage = getImg(channel);
+                    const pod = {
+                        title: channel.querySelector("title")?.textContent || "未知播客",
+                        author: channel.querySelector("itunes\\:author, author")?.textContent || "未知作者",
+                        description: channel.querySelector("description")?.textContent || "",
+                        image: podcastImage,
+                        episodes: Array.from(dom.querySelectorAll("item")).map(item => ({
+                            title: item.querySelector("title")?.textContent,
+                            audioUrl: item.querySelector("enclosure")?.getAttribute("url"),
+                            image: getImg(item) || podcastImage,
+                            isFinished: false 
+                        }))
+                    };
+                    const existingIdx = allPodcastsData.findIndex(x => x.title === pod.title);
+                    if (existingIdx === -1) allPodcastsData.push(pod);
+                } catch(err) {
+                    console.error("文件解析错误:", err);
+                }
+            }
+            localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
+            renderPodcastList();
         }
 
-        window.removePodcast = (index, e) => {
-            e.stopPropagation();
-            if(!confirm('确定从库中移除此播客吗？')) return;
-            const list = JSON.parse(localStorage.getItem('my_podcasts') || '[]');
-            list.splice(index, 1);
-            localStorage.setItem('my_podcasts', JSON.stringify(list));
-            renderPodcastList();
-        };
-
-        window.showEpisodeList = (index) => {
-            const list = JSON.parse(localStorage.getItem('my_podcasts') || '[]');
-            const podcast = list[index];
-            document.getElementById('listTitle').innerText = podcast.title;
-            const container = document.getElementById('epListScroll');
-            container.innerHTML = podcast.episodes.map(ep => `
-                <div class="ep-item" onclick='playEpisode(${JSON.stringify(ep).replace(/'/g, "&apos;")}, "${podcast.title}", "${podcast.image}")'>
-                    <img class="ep-list-cover" src="${ep.image || podcast.image}">
-                    <div class="ep-list-info">
-                        <div class="ep-list-title">${ep.title}</div>
-                        <div class="ep-list-meta">立即播放</div>
-                    </div>
-                </div>
-            `).join('');
-            document.getElementById('episodeListOverlay').classList.add('is-active');
-        };
-
-        window.closeEpisodeList = () => {
-            document.getElementById('episodeListOverlay').classList.remove('is-active');
-        };
-
-        window.playEpisode = (ep, pTitle, pCover) => {
-            UI.openPlayer(ep, pTitle, pCover);
-        };
+        function handleExport() {
+            if (allPodcastsData.length === 0) return;
+            const blob = new Blob([JSON.stringify(allPodcastsData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `podcast_backup_${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
 
         function renderPodcastList() {
-            const grid = document.getElementById('podcastGrid');
-            const list = JSON.parse(localStorage.getItem('my_podcasts') || '[]');
-            grid.innerHTML = list.map((p, i) => `
-                <div class="podcast-card" onclick="showEpisodeList(${i})">
-                    <div class="delete-badge" onclick="removePodcast(${i}, event)">−</div>
-                    <div class="card-cover-wrapper">
-                        <img src="${p.image}" loading="lazy">
+            const grid = document.getElementById('mainGrid');
+            if(!grid) return;
+            const itemsToRemove = grid.querySelectorAll('.podcast-card, .grid-footer-spacer');
+            itemsToRemove.forEach(c => c.remove());
+            allPodcastsData.forEach((p, i) => {
+                const card = document.createElement('div');
+                card.className = 'podcast-card';
+                card.style.setProperty('--card-cover', `url('${p.image}')`);
+                card.onclick = () => { if(!document.body.classList.contains('edit-mode')) window.renderEpisodeList(i); };
+                card.innerHTML = `
+                    <div class="card-inner">
+                        <div class="card-info">
+                            <h3>${p.title}</h3>
+                            <p>${p.author}</p>
+                        </div>
                     </div>
-                    <div class="card-content">
-                        <div class="card-title">${p.title}</div>
-                        <div class="card-author">${p.author}</div>
-                    </div>
-                </div>
-            `).join('');
+                    <div class="delete-badge"><svg viewBox="0 0 24 24" width="14" height="14" stroke="white" stroke-width="3" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>`;
+                card.querySelector('.delete-badge').onclick = (e) => {
+                    e.stopPropagation();
+                    allPodcastsData.splice(i, 1);
+                    localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
+                    renderPodcastList();
+                };
+                grid.appendChild(card);
+            });
             const spacer = document.createElement('div');
             spacer.className = 'grid-footer-spacer';
             grid.appendChild(spacer);
@@ -132,27 +529,14 @@
         document.addEventListener('DOMContentLoaded', () => {
             renderPodcastList();
             PlayerCore.onStatusChange((isPlaying) => window.updatePlayIcons(isPlaying));
-            
             const savedTheme = localStorage.getItem('podcast_theme');
             if (savedTheme === 'dark') updateThemeUI(true);
-
-            document.getElementById('themeToggle').onclick = () => {
-                const isDark = document.body.classList.contains('dark-mode');
-                updateThemeUI(!isDark);
-            };
-
             const fileInput = document.getElementById('rssFileInput');
             if(fileInput) fileInput.onchange = handleFileUpload;
-            
             const editBtn = document.getElementById('editBtn');
-            if(editBtn) editBtn.onclick = (e) => { 
-                e.stopPropagation(); 
-                document.body.classList.toggle('edit-mode'); 
-            };
-
+            if(editBtn) editBtn.onclick = (e) => { e.stopPropagation(); document.body.classList.toggle('edit-mode'); };
             const range = document.getElementById('progressRange');
             if(range) range.oninput = (e) => PlayerCore.seek(e.target.value);
-
             PlayerCore.onTimeUpdate((pct, cur, tot) => {
                 const f = document.getElementById('miniProgressFill');
                 if(f) f.style.width = pct + '%';
