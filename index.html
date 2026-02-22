@@ -72,6 +72,61 @@
             background: rgba(175, 82, 222, 0.1);
             border: 0.5px solid rgba(175, 82, 222, 0.2);
         }
+
+        .modal-podcast-info {
+            padding: 24px 24px 20px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            position: relative;
+        }
+        .modal-pod-meta-row {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            padding-right: 40px;
+        }
+        .modal-pod-cover {
+            width: 80px;
+            height: 80px;
+            border-radius: 12px;
+            object-fit: cover;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .modal-pod-text h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 800;
+            line-height: 1.2;
+            color: var(--text-main);
+        }
+        .modal-pod-author {
+            font-size: 14px;
+            color: var(--accent);
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(120, 120, 120, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-sub);
+            cursor: pointer;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        .modal-close-btn:active {
+            transform: scale(0.9);
+            background: rgba(120, 120, 120, 0.2);
+        }
     </style>
 </head>
 <body>
@@ -157,9 +212,18 @@
 
     <div id="episodeModalOverlay" class="modal-overlay" onclick="window.closeModal()">
         <div class="episode-modal" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h3 id="modalPodTitle">播客节目</h3>
-                <button class="modal-close-x" onclick="window.closeModal()">&times;</button>
+            <div class="modal-close-btn" onclick="window.closeModal()">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </div>
+            
+            <div class="modal-podcast-info" id="modalPodInfo">
+                <div class="modal-pod-meta-row">
+                    <img id="modalPodCover" class="modal-pod-cover" src="">
+                    <div class="modal-pod-text">
+                        <h2 id="modalPodTitle">播客节目</h2>
+                        <div id="modalPodAuthor" class="modal-pod-author">作者名称</div>
+                    </div>
+                </div>
             </div>
             <div id="modalEpisodeList" class="modal-content"></div>
         </div>
@@ -267,6 +331,7 @@
             }
         };
         window.closePlayer = () => document.getElementById('playerOverlay').classList.remove('is-active');
+        
         window.closeModal = () => {
             const modal = document.querySelector('.episode-modal');
             modal.style.transform = 'translateY(30px)';
@@ -305,21 +370,20 @@
                 playSvg.replace('width="22"','width="40"').replace('height="22"','height="40"');
         };
 
+        window.toggleEpisodeDone = (podIdx, epIdx) => {
+            const episode = allPodcastsData[podIdx].episodes[epIdx];
+            episode.isFinished = !episode.isFinished;
+            if(currentPlayingIdx.pod === podIdx && currentPlayingIdx.ep === epIdx) {
+                document.getElementById('markDoneBtn').classList.toggle('is-active', episode.isFinished);
+            }
+            localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
+            window.renderEpisodeList(podIdx);
+        };
+
         window.toggleCurrentEpisodeDone = () => {
             const { pod, ep } = currentPlayingIdx;
             if(pod === -1 || ep === -1) return;
-            
-            const episode = allPodcastsData[pod].episodes[ep];
-            episode.isFinished = !episode.isFinished;
-            
-            const btn = document.getElementById('markDoneBtn');
-            btn.classList.toggle('is-active', episode.isFinished);
-            
-            localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
-            
-            if(document.getElementById('episodeModalOverlay').style.display === 'flex') {
-                window.renderEpisodeList(pod);
-            }
+            window.toggleEpisodeDone(pod, ep);
         };
 
         window.renderEpisodeList = (podIdx) => {
@@ -327,7 +391,11 @@
             if(!p) return;
             const modalOverlay = document.getElementById('episodeModalOverlay');
             const listContainer = document.getElementById('modalEpisodeList');
+            
             document.getElementById('modalPodTitle').innerText = p.title;
+            document.getElementById('modalPodAuthor').innerText = p.author;
+            document.getElementById('modalPodCover').src = p.image;
+            
             listContainer.innerHTML = ""; 
             modalOverlay.style.display = 'flex'; 
 
@@ -335,6 +403,7 @@
                 const isCurrent = currentPlayingIdx.pod === podIdx && currentPlayingIdx.ep === epIdx;
                 const item = document.createElement('div');
                 item.className = `episode-list-item ${ep.isFinished ? 'is-finished' : ''} ${isCurrent ? 'is-playing' : ''}`;
+                
                 item.onclick = () => {
                     currentPlayingIdx = { pod: podIdx, ep: epIdx };
                     const cover = ep.image || p.image;
@@ -346,21 +415,18 @@
                     document.getElementById('playerTitle').innerText = ep.title;
                     document.getElementById('playerAuthor').innerText = p.title;
                     document.getElementById('dynamicBg').style.backgroundImage = `url('${cover}')`;
-                    
                     document.getElementById('markDoneBtn').classList.toggle('is-active', !!ep.isFinished);
-                    
-                    // 传入音频地址及元数据
                     PlayerCore.play(ep.audioUrl, ep.title, p.title, cover);
-                    
                     window.renderEpisodeList(podIdx);
                 };
+
+                // 此处已彻底删除右侧的 finished-check 按钮 HTML
                 item.innerHTML = `
                     <img class="ep-list-cover" src="${ep.image || p.image}">
                     <div class="ep-list-info">
                         <div class="ep-list-title">${ep.title}</div>
                         <div class="ep-list-meta">${ep.isFinished ? '已听完' : (isCurrent ? '正在播放' : '播放单集')}</div>
                     </div>
-                    ${ep.isFinished ? '<div class="finished-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg></div>' : ''}
                 `;
                 listContainer.appendChild(item);
             });
@@ -371,7 +437,6 @@
             for (const file of files) {
                 try {
                     const text = await file.text();
-                    
                     if (file.name.toLowerCase().endsWith('.json')) {
                         const backupData = JSON.parse(text);
                         if (Array.isArray(backupData)) {
@@ -379,17 +444,11 @@
                                 const existingIdx = allPodcastsData.findIndex(x => x.title === newPod.title);
                                 if (existingIdx === -1) {
                                     allPodcastsData.push(newPod);
-                                } else {
-                                    newPod.episodes.forEach(newEp => {
-                                        const oldEp = allPodcastsData[existingIdx].episodes.find(e => e.audioUrl === newEp.audioUrl);
-                                        if (oldEp) oldEp.isFinished = newEp.isFinished;
-                                    });
                                 }
                             });
                         }
                         continue;
                     }
-
                     const dom = new DOMParser().parseFromString(text, "text/xml");
                     const channel = dom.querySelector("channel");
                     if (!channel) continue;
@@ -405,6 +464,7 @@
                     const pod = {
                         title: channel.querySelector("title")?.textContent || "未知播客",
                         author: channel.querySelector("itunes\\:author, author")?.textContent || "未知作者",
+                        description: channel.querySelector("description")?.textContent || "",
                         image: podcastImage,
                         episodes: Array.from(dom.querySelectorAll("item")).map(item => ({
                             title: item.querySelector("title")?.textContent,
@@ -413,11 +473,8 @@
                             isFinished: false 
                         }))
                     };
-
                     const existingIdx = allPodcastsData.findIndex(x => x.title === pod.title);
-                    if (existingIdx === -1) {
-                        allPodcastsData.push(pod);
-                    }
+                    if (existingIdx === -1) allPodcastsData.push(pod);
                 } catch(err) {
                     console.error("文件解析错误:", err);
                 }
@@ -440,17 +497,13 @@
         function renderPodcastList() {
             const grid = document.getElementById('mainGrid');
             if(!grid) return;
-            
             const itemsToRemove = grid.querySelectorAll('.podcast-card, .grid-footer-spacer');
             itemsToRemove.forEach(c => c.remove());
-
             allPodcastsData.forEach((p, i) => {
                 const card = document.createElement('div');
                 card.className = 'podcast-card';
                 card.style.setProperty('--card-cover', `url('${p.image}')`);
-                card.onclick = () => { 
-                    if(!document.body.classList.contains('edit-mode')) window.renderEpisodeList(i); 
-                };
+                card.onclick = () => { if(!document.body.classList.contains('edit-mode')) window.renderEpisodeList(i); };
                 card.innerHTML = `
                     <div class="card-inner">
                         <div class="card-info">
@@ -458,12 +511,7 @@
                             <p>${p.author}</p>
                         </div>
                     </div>
-                    <div class="delete-badge">
-                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="white" stroke-width="3" fill="none">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                    </div>`;
+                    <div class="delete-badge"><svg viewBox="0 0 24 24" width="14" height="14" stroke="white" stroke-width="3" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>`;
                 card.querySelector('.delete-badge').onclick = (e) => {
                     e.stopPropagation();
                     allPodcastsData.splice(i, 1);
@@ -472,7 +520,6 @@
                 };
                 grid.appendChild(card);
             });
-
             const spacer = document.createElement('div');
             spacer.className = 'grid-footer-spacer';
             grid.appendChild(spacer);
@@ -480,24 +527,15 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             renderPodcastList();
-
-            // 监听系统状态变化，同步 UI
-            PlayerCore.onStatusChange((isPlaying) => {
-                window.updatePlayIcons(isPlaying);
-            });
-
+            PlayerCore.onStatusChange((isPlaying) => window.updatePlayIcons(isPlaying));
             const savedTheme = localStorage.getItem('podcast_theme');
             if (savedTheme === 'dark') updateThemeUI(true);
-
             const fileInput = document.getElementById('rssFileInput');
             if(fileInput) fileInput.onchange = handleFileUpload;
-            
             const editBtn = document.getElementById('editBtn');
             if(editBtn) editBtn.onclick = (e) => { e.stopPropagation(); document.body.classList.toggle('edit-mode'); };
-
             const range = document.getElementById('progressRange');
             if(range) range.oninput = (e) => PlayerCore.seek(e.target.value);
-
             PlayerCore.onTimeUpdate((pct, cur, tot) => {
                 const f = document.getElementById('miniProgressFill');
                 if(f) f.style.width = pct + '%';
@@ -508,10 +546,6 @@
                 const dt = document.getElementById('durationTime');
                 if(dt) dt.innerText = tot;
             });
-
-            PlayerCore.audio.onended = () => {
-                window.updatePlayIcons(false);
-            };
         });
     </script>
 </body>
