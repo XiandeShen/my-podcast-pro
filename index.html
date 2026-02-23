@@ -243,6 +243,32 @@
             handleClearData();
         };
 
+        // --- 提取重置播放器UI的公共方法 ---
+        function resetPlayerUI() {
+            PlayerCore.audio.pause();
+            PlayerCore.audio.src = "";
+            
+            const mini = document.getElementById('miniPlayer');
+            const miniCover = document.getElementById('miniCover');
+            const defaultIcon = "data:image/svg+xml,<svg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><defs><linearGradient id='podGradient' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%23AF52FF;stop-opacity:1' /><stop offset='100%' style='stop-color:%235C5CFF;stop-opacity:1' /></linearGradient></defs><rect width='200' height='200' rx='0' fill='url(%23podGradient)'/><g fill='white'><rect x='55' y='85' width='12' height='30' rx='6' opacity='0.6'/><rect x='75' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='95' y='55' width='12' height='90' rx='6'/><rect x='115' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='135' y='85' width='12' height='30' rx='6' opacity='0.6'/></g></svg>";
+            
+            mini.classList.add('is-empty');
+            miniCover.src = defaultIcon;
+            document.getElementById('miniTitle').innerText = "请选择节目";
+            document.getElementById('miniAuthor').innerText = "PODCAST";
+            
+            currentPlayingIdx = { pod: -1, ep: -1 };
+            
+            document.getElementById('playerCover').src = "";
+            document.getElementById('playerTitle').innerText = "未播放";
+            document.getElementById('playerAuthor').innerText = "作者";
+            document.getElementById('dynamicBg').style.backgroundImage = "";
+            document.getElementById('miniProgressFill').style.width = '0%';
+            document.getElementById('progressRange').value = 0;
+            document.getElementById('currentTime').innerText = "0:00";
+            document.getElementById('durationTime').innerText = "0:00";
+        }
+
         async function handleClearData() {
             if (allPodcastsData.length === 0) {
                 CustomUI.alert("资料库已经是空的。");
@@ -258,28 +284,7 @@
                 allPodcastsData = [];
                 localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
                 renderPodcastList();
-                
-                // --- 彻底重置播放状态 ---
-                PlayerCore.audio.pause();
-                PlayerCore.audio.src = "";
-                
-                const mini = document.getElementById('miniPlayer');
-                const miniCover = document.getElementById('miniCover');
-                const defaultIcon = "data:image/svg+xml,<svg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><defs><linearGradient id='podGradient' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%23AF52FF;stop-opacity:1' /><stop offset='100%' style='stop-color:%235C5CFF;stop-opacity:1' /></linearGradient></defs><rect width='200' height='200' rx='0' fill='url(%23podGradient)'/><g fill='white'><rect x='55' y='85' width='12' height='30' rx='6' opacity='0.6'/><rect x='75' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='95' y='55' width='12' height='90' rx='6'/><rect x='115' y='70' width='12' height='60' rx='6' opacity='0.8'/><rect x='135' y='85' width='12' height='30' rx='6' opacity='0.6'/></g></svg>";
-                
-                mini.classList.add('is-empty'); // 隐藏/重置迷你播放条
-                miniCover.src = defaultIcon; // 恢复默认图标
-                document.getElementById('miniTitle').innerText = "请选择节目";
-                document.getElementById('miniAuthor').innerText = "PODCAST";
-                
-                // 重置当前播放索引
-                currentPlayingIdx = { pod: -1, ep: -1 };
-                
-                // 重置大播放器界面
-                document.getElementById('playerCover').src = "";
-                document.getElementById('playerTitle').innerText = "未播放";
-                document.getElementById('playerAuthor').innerText = "作者";
-                document.getElementById('dynamicBg').style.backgroundImage = "";
+                resetPlayerUI();
             }
         }
 
@@ -538,6 +543,15 @@
                     <div class="delete-badge"><svg viewBox="0 0 24 24" width="14" height="14" stroke="white" stroke-width="3" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>`;
                 card.querySelector('.delete-badge').onclick = (e) => {
                     e.stopPropagation();
+                    
+                    // --- 优化：删除时检查是否正在播放该节目 ---
+                    if (currentPlayingIdx.pod === i) {
+                        resetPlayerUI();
+                    } else if (currentPlayingIdx.pod > i) {
+                        // 如果删除的是当前播放节目之前的索引，需要修正索引位置保持同步
+                        currentPlayingIdx.pod--;
+                    }
+                    
                     allPodcastsData.splice(i, 1);
                     localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
                     renderPodcastList();
