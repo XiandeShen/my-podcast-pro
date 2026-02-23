@@ -271,15 +271,11 @@ const CustomUI = {
 
 	document.getElementById('importAction').onclick = async () => {
             moreMenu.classList.remove('show');
-            
-            // 弹出二级菜单
             const choice = await CustomUI.showImportTypeSelector();
             
             if (choice === 'local') {
-                // 原有逻辑：点击本地文件选择
                 document.getElementById('rssFileInput').click();
             } else if (choice === 'remote') {
-                // 新逻辑：输入链接
                 const url = await CustomUI.show({
                     title: "链接订阅",
                     msg: "请输入 RSS 或 XML 订阅地址：",
@@ -288,9 +284,21 @@ const CustomUI = {
                 });
 
                 if (url && url.trim()) {
-                    // 使用已有的 rss-parser.js 功能
+                    const targetUrl = url.trim();
+                    let finalUrl = targetUrl;
+
+                    // --- 核心修正：环境判断逻辑 ---
+                    // 判断依据：如果不是本地地址（localhost/127.0.0.1），且页面运行在非本地环境下，则使用代理
+                    const isLocalResource = targetUrl.includes('localhost') || targetUrl.includes('127.0.0.1');
+                    const isGitHubPages = window.location.hostname.includes('github.io');
+
+                    if (isGitHubPages && !isLocalResource) {
+                        finalUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+                    }
+                    // ----------------------------
+                    
                     try {
-                        const pod = await fetchAndParseRSS(url.trim());
+                        const pod = await fetchAndParseRSS(finalUrl);
                         if (pod) {
                             const existingIdx = allPodcastsData.findIndex(x => x.title === pod.title);
                             if (existingIdx === -1) {
@@ -302,7 +310,8 @@ const CustomUI = {
                                 CustomUI.alert("该播客已在资料库中。");
                             }
                         } else {
-                            CustomUI.alert("解析失败，请检查链接是否为有效的 RSS 地址。");
+                            // 这里如果是本地解析失败，可能是因为 CORS 限制（即使在本地，浏览器有时也会拦截不同域的 XML）
+                            CustomUI.alert("解析失败，请检查链接是否有效。");
                         }
                     } catch (err) {
                         CustomUI.alert("无法获取内容，请检查网络或链接。");
