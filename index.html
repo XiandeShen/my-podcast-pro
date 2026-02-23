@@ -292,60 +292,60 @@ const CustomUI = {
         }
 
 async function handleUrlRestore() {
-            let res = await CustomUI.show({
-                title: "同步云端库",
-                msg: "请输入 JSON 备份文件的直链地址。留空将使用默认地址恢复。",
-                showInput: true,
-                placeholder: "https://..."
+    let res = await CustomUI.show({
+        title: "同步云端库",
+        msg: "请输入 JSON 备份文件的直链地址。留空将使用默认地址恢复。",
+        showInput: true,
+        placeholder: "https://..."
+    });
+    
+    if (res === false) return;
+    
+    let url = res.trim() || "https://xiandeshen.github.io/podcast/default.json";
+
+    if (url.includes("github.com") && !url.includes("raw.githubusercontent.com")) {
+        url = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/");
+    }
+
+    // --- 修改部分：显示加载状态并隐藏按钮 ---
+    CustomUI.show({ 
+        title: "同步中", 
+        msg: "正在从云端获取资料库，请稍候...", 
+        onlyConfirm: true
+    });
+    // 隐藏确认按钮和禁用状态
+    const confirmBtn = document.getElementById('dialogConfirm');
+    confirmBtn.style.display = 'none'; 
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("无法连接");
+        const backupData = await response.json();
+        
+        // 关闭加载提示，恢复按钮显示状态（供下次使用）
+        CustomUI.overlay.style.display = 'none';
+        confirmBtn.style.display = 'block';
+
+        if (Array.isArray(backupData)) {
+            const confirmed = await CustomUI.show({
+                title: "确认同步",
+                msg: `已解析到 ${backupData.length} 个节目。是否合并到本地？`
             });
-            
-            if (res === false) return;
-            
-            let url = res.trim() || "https://xiandeshen.github.io/podcast/default.json";
-
-            if (url.includes("github.com") && !url.includes("raw.githubusercontent.com")) {
-                url = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/");
-            }
-
-            // --- 修改部分：显示加载状态 ---
-            // 使用 onlyConfirm 但不显示按钮，或者直接修改文字提示用户等待
-            CustomUI.show({ 
-                title: "同步中", 
-                msg: "正在从云端获取资料库，请稍候...", 
-                onlyConfirm: true, 
-                confirmText: "请稍候" 
-            });
-            // 禁用按钮防止重复点击
-            document.getElementById('dialogConfirm').disabled = true;
-
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error("无法连接");
-                const backupData = await response.json();
-                
-                // 关闭加载提示
-                CustomUI.overlay.style.display = 'none';
-                document.getElementById('dialogConfirm').disabled = false;
-
-                if (Array.isArray(backupData)) {
-                    const confirmed = await CustomUI.show({
-                        title: "确认同步",
-                        msg: `已解析到 ${backupData.length} 个节目。是否合并到本地？`
-                    });
-                    if (confirmed) {
-                        backupData.forEach(newPod => {
-                            const existingIdx = allPodcastsData.findIndex(x => x.title === newPod.title);
-                            if (existingIdx === -1) allPodcastsData.push(newPod);
-                        });
-                        localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
-                        renderPodcastList();
-                    }
-                }
-            } catch (err) {
-                document.getElementById('dialogConfirm').disabled = false;
-                CustomUI.alert("同步失败，请检查链接有效性。");
+            if (confirmed) {
+                backupData.forEach(newPod => {
+                    const existingIdx = allPodcastsData.findIndex(x => x.title === newPod.title);
+                    if (existingIdx === -1) allPodcastsData.push(newPod);
+                });
+                localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
+                renderPodcastList();
             }
         }
+    } catch (err) {
+        // 出错时恢复按钮显示，以便用户关闭错误提示
+        confirmBtn.style.display = 'block';
+        CustomUI.alert("同步失败，请检查链接有效性。");
+    }
+}
 
         function handleExport() {
             if (allPodcastsData.length === 0) {
