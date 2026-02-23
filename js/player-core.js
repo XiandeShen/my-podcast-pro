@@ -2,14 +2,16 @@
 
 const sysAudio = new Audio();
 sysAudio.id = "core-audio-player";
-sysAudio.style.display = "none";
 sysAudio.preload = "auto";
+// 开启跨域支持，防止部分音频源在后台切换时因权限报错
+sysAudio.crossOrigin = "anonymous";
 document.body.appendChild(sysAudio);
 
 export const PlayerCore = {
     audio: sysAudio,
     _onTimeUpdate: null,
     _onStatusChange: null,
+    _syncInterval: null,
 
     play(url, title, artist, cover) {
         if (!url) return;
@@ -26,8 +28,8 @@ export const PlayerCore = {
             playPromise
                 .then(() => {
                     this.audio.playbackRate = savedRate;
-                    // 注入元数据并建立后台连接
-                    this.updateMetadataOnly(title, artist, cover);
+                    this.setupMediaSession(title, artist, cover);
+                    this.startBackgroundKeepAlive(); // 核心：启动保活循环
                 })
                 .catch(error => console.error("Playback Error:", error));
         }
@@ -38,60 +40,60 @@ export const PlayerCore = {
             if (this._onTimeUpdate) {
                 this._onTimeUpdate((cur / dur) * 100 || 0, this.format(cur), this.format(dur));
             }
-            // 持续向系统更新播放位置，防止后台进程被杀
-            this.updatePositionState();
         };
 
         this.audio.onplay = () => {
             if (this._onStatusChange) this._onStatusChange(true);
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.playbackState = "playing";
-            }
-        };
-        this.audio.onpause = () => {
-            if (this._onStatusChange) this._onStatusChange(false);
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.playbackState = "paused";
-            }
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
         };
 
-        this.audio.oncanplay = () => {
-            this.audio.playbackRate = savedRate;
+        this.audio.onpause = () => {
+            if (this._onStatusChange) this._onStatusChange(false);
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused";
         };
     },
 
-    updateMetadataOnly(title, artist, cover) {
+    // 工业级：建立后台保活心跳
+    startBackgroundKeepAlive() {
+        if (this._syncInterval) clearInterval(this._syncInterval);
+        // 每 5 秒向系统汇报一次当前进度，这是防止 Edge 冻结标签页最有效的方法
+        this._syncInterval = setInterval(() => {
+            if (!this.audio.paused) {
+                this.updatePositionState();
+                // 额外保活：微调音量引起系统层面的音频活动更新
+                const currentVol = this.audio.volume;
+                this.audio.volume = currentVol > 0.1 ? currentVol - 0.001 : currentVol + 0.001;
+                this.audio.volume = currentVol;
+            }
+        }, 5000);
+    },
+
+    setupMediaSession(title, artist, cover) {
         if ('mediaSession' in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: title || "未知剧集",
                 artist: artist || "Podcast",
                 album: artist || "Podcast",
                 artwork: [
-                    { src: cover, sizes: '96x96',   type: 'image/png' },
-                    { src: cover, sizes: '128x128', type: 'image/png' },
-                    { src: cover, sizes: '192x192', type: 'image/png' },
-                    { src: cover, sizes: '256x256', type: 'image/png' },
-                    { src: cover, sizes: '384x384', type: 'image/png' },
-                    { src: cover, sizes: '512x512', type: 'image/png' },
+                    { src: cover, sizes: '512x512', type: 'image/png' }
                 ]
             });
 
-            // 注册动作句柄是让移动端浏览器维持后台运行的关键
-            const actionHandlers = [
-                ['play', () => this.audio.play()],
-                ['pause', () => this.audio.pause()],
-                ['seekbackward', (details) => { this.audio.currentTime -= (details.seekOffset || 15); }],
-                ['seekforward', (details) => { this.audio.currentTime += (details.seekOffset || 15); }],
-                ['seekto', (details) => { if (details.fastSeek && 'fastSeek' in this.audio) { this.audio.fastSeek(details.seekTime); } else { this.audio.currentTime = details.seekTime; } }]
-            ];
+            // 注册所有控制动作，让 Edge 识别为完整的媒体应用
+            const actions = {
+                play: () => this.audio.play(),
+                pause: () => this.audio.pause(),
+                seekbackward: (d) => { this.audio.currentTime -= (d.seekOffset || 15); },
+                seekforward: (d) => { this.audio.currentTime += (d.seekOffset || 15); },
+                seekto: (d) => { this.audio.currentTime = d.seekTime; },
+                stop: () => { this.audio.pause(); }
+            };
 
-            for (const [action, handler] of actionHandlers) {
+            Object.keys(actions).forEach(action => {
                 try {
-                    navigator.mediaSession.setActionHandler(action, handler);
-                } catch (error) {
-                    console.log(`The media session action "${action}" is not supported.`);
-                }
-            }
+                    navigator.mediaSession.setActionHandler(action, actions[action]);
+                } catch (e) {}
+            });
         }
     },
 
