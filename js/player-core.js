@@ -2,16 +2,14 @@
 
 const sysAudio = new Audio();
 sysAudio.id = "core-audio-player";
+sysAudio.style.display = "none";
 sysAudio.preload = "auto";
-// 开启跨域支持，防止部分音频源在后台切换时因权限报错
-sysAudio.crossOrigin = "anonymous";
 document.body.appendChild(sysAudio);
 
 export const PlayerCore = {
     audio: sysAudio,
     _onTimeUpdate: null,
     _onStatusChange: null,
-    _syncInterval: null,
 
     play(url, title, artist, cover) {
         if (!url) return;
@@ -28,8 +26,8 @@ export const PlayerCore = {
             playPromise
                 .then(() => {
                     this.audio.playbackRate = savedRate;
-                    this.setupMediaSession(title, artist, cover);
-                    this.startBackgroundKeepAlive(); // 核心：启动保活循环
+                    // 仅注入元数据（封面标题），不设置 setPositionState，保证时间同步
+                    this.updateMetadataOnly(title, artist, cover);
                 })
                 .catch(error => console.error("Playback Error:", error));
         }
@@ -44,68 +42,31 @@ export const PlayerCore = {
 
         this.audio.onplay = () => {
             if (this._onStatusChange) this._onStatusChange(true);
-            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
         };
-
         this.audio.onpause = () => {
             if (this._onStatusChange) this._onStatusChange(false);
-            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused";
+        };
+
+        this.audio.oncanplay = () => {
+            this.audio.playbackRate = savedRate;
         };
     },
 
-    // 工业级：建立后台保活心跳
-    startBackgroundKeepAlive() {
-        if (this._syncInterval) clearInterval(this._syncInterval);
-        // 每 5 秒向系统汇报一次当前进度，这是防止 Edge 冻结标签页最有效的方法
-        this._syncInterval = setInterval(() => {
-            if (!this.audio.paused) {
-                this.updatePositionState();
-                // 额外保活：微调音量引起系统层面的音频活动更新
-                const currentVol = this.audio.volume;
-                this.audio.volume = currentVol > 0.1 ? currentVol - 0.001 : currentVol + 0.001;
-                this.audio.volume = currentVol;
-            }
-        }, 5000);
-    },
-
-    setupMediaSession(title, artist, cover) {
+    updateMetadataOnly(title, artist, cover) {
         if ('mediaSession' in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: title || "未知剧集",
                 artist: artist || "Podcast",
                 album: artist || "Podcast",
                 artwork: [
-                    { src: cover, sizes: '512x512', type: 'image/png' }
+                    { src: cover, sizes: '96x96',   type: 'image/png' },
+                    { src: cover, sizes: '128x128', type: 'image/png' },
+                    { src: cover, sizes: '192x192', type: 'image/png' },
+                    { src: cover, sizes: '256x256', type: 'image/png' },
+                    { src: cover, sizes: '384x384', type: 'image/png' },
+                    { src: cover, sizes: '512x512', type: 'image/png' },
                 ]
             });
-
-            // 注册所有控制动作，让 Edge 识别为完整的媒体应用
-            const actions = {
-                play: () => this.audio.play(),
-                pause: () => this.audio.pause(),
-                seekbackward: (d) => { this.audio.currentTime -= (d.seekOffset || 15); },
-                seekforward: (d) => { this.audio.currentTime += (d.seekOffset || 15); },
-                seekto: (d) => { this.audio.currentTime = d.seekTime; },
-                stop: () => { this.audio.pause(); }
-            };
-
-            Object.keys(actions).forEach(action => {
-                try {
-                    navigator.mediaSession.setActionHandler(action, actions[action]);
-                } catch (e) {}
-            });
-        }
-    },
-
-    updatePositionState() {
-        if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
-            if (this.audio.duration && Number.isFinite(this.audio.duration)) {
-                navigator.mediaSession.setPositionState({
-                    duration: this.audio.duration,
-                    playbackRate: this.audio.playbackRate,
-                    position: this.audio.currentTime
-                });
-            }
         }
     },
 
@@ -118,7 +79,6 @@ export const PlayerCore = {
     seek(pct) {
         if (this.audio.duration && Number.isFinite(this.audio.duration)) {
             this.audio.currentTime = (pct / 100) * this.audio.duration;
-            this.updatePositionState();
         }
     },
     format(s) {
