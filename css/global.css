@@ -495,3 +495,17 @@ body.dark-mode .loading-overlay { background: rgba(0, 0, 0, 0.6); }
     animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* 禁止图片和特定元素的系统默认菜单（移动端长按） */
+img, .podcast-card, .mini-player, .p-overlay {
+    -webkit-touch-callout: none; /* iOS Safari 禁止长按菜单 */
+    -webkit-user-select: none;   /* Safari 禁止选择 */
+    user-select: none;           /* 标准语法 */
+}
+
+/* 允许输入框等元素继续正常使用 */
+input, textarea {
+    -webkit-touch-callout: default;
+    -webkit-user-select: text;
+    user-select: text;
+}
