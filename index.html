@@ -182,7 +182,7 @@
         let currentSpeedIndex = 0;
         let currentPlayingIdx = { pod: -1, ep: -1 };
 
-        const CustomUI = {
+const CustomUI = {
             overlay: document.getElementById('customDialogOverlay'),
             title: document.getElementById('dialogTitle'),
             msg: document.getElementById('dialogMsg'),
@@ -190,7 +190,7 @@
             confirmBtn: document.getElementById('dialogConfirm'),
             cancelBtn: document.getElementById('dialogCancel'),
             
-            show({ title, msg, showInput = false, confirmText = "确定", isDanger = false, placeholder = "" }) {
+            show({ title, msg, showInput = false, confirmText = "确定", isDanger = false, placeholder = "", onlyConfirm = false }) {
                 return new Promise((resolve) => {
                     this.title.innerText = title;
                     this.msg.innerText = msg;
@@ -199,6 +199,9 @@
                     this.input.placeholder = placeholder;
                     this.confirmBtn.innerText = confirmText;
                     this.confirmBtn.className = `dialog-btn ${isDanger ? 'btn-danger' : 'btn-confirm'}`;
+                    
+                    // 如果是 onlyConfirm 模式，隐藏取消按钮
+                    this.cancelBtn.style.display = onlyConfirm ? 'none' : 'block';
                     this.overlay.style.display = 'flex';
 
                     const cleanup = (val) => {
@@ -212,7 +215,8 @@
                     this.cancelBtn.onclick = () => cleanup(false);
                 });
             },
-            alert(msg) { return this.show({ title: "提示", msg }); }
+            // 优化 alert 方法，使其只显示一个按钮
+            alert(msg) { return this.show({ title: "提示", msg, onlyConfirm: true, confirmText: "好" }); }
         };
 
         const moreMenu = document.getElementById('moreMenu');
@@ -287,7 +291,7 @@
             }
         }
 
-        async function handleUrlRestore() {
+async function handleUrlRestore() {
             let res = await CustomUI.show({
                 title: "同步云端库",
                 msg: "请输入 JSON 备份文件的直链地址。留空将使用默认地址恢复。",
@@ -303,11 +307,26 @@
                 url = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/");
             }
 
+            // --- 修改部分：显示加载状态 ---
+            // 使用 onlyConfirm 但不显示按钮，或者直接修改文字提示用户等待
+            CustomUI.show({ 
+                title: "同步中", 
+                msg: "正在从云端获取资料库，请稍候...", 
+                onlyConfirm: true, 
+                confirmText: "请稍候" 
+            });
+            // 禁用按钮防止重复点击
+            document.getElementById('dialogConfirm').disabled = true;
+
             try {
                 const response = await fetch(url);
                 if (!response.ok) throw new Error("无法连接");
                 const backupData = await response.json();
                 
+                // 关闭加载提示
+                CustomUI.overlay.style.display = 'none';
+                document.getElementById('dialogConfirm').disabled = false;
+
                 if (Array.isArray(backupData)) {
                     const confirmed = await CustomUI.show({
                         title: "确认同步",
@@ -323,6 +342,7 @@
                     }
                 }
             } catch (err) {
+                document.getElementById('dialogConfirm').disabled = false;
                 CustomUI.alert("同步失败，请检查链接有效性。");
             }
         }
