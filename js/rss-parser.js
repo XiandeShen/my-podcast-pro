@@ -1,21 +1,17 @@
 // js/rss-parser.js
 export async function fetchAndParseRSS(url) {
     try {
-        // 使用 CORS 代理解决 GitHub Pages 跨域请求被拦截的问题
+        // 核心修改：使用 allorigins 代理绕过 GitHub Pages 的跨域限制
         const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
         const response = await fetch(proxyUrl);
         
         if (!response.ok) throw new Error("代理请求失败");
         
         const data = await response.json();
-        const xmlText = data.contents; // allorigins 返回的 JSON 对象中 contents 才是原始 XML
+        const xmlText = data.contents; // allorigins 返回的内容在 contents 字段中
         
         const dom = new DOMParser().parseFromString(xmlText, "text/xml");
         const channel = dom.querySelector("channel");
-
-        if (!channel) {
-            throw new Error("无效的 RSS 格式");
-        }
 
         // 核心修复：针对李诞 RSS 特殊标签的稳健提取逻辑
         const getImg = (el) => {
