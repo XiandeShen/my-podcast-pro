@@ -26,7 +26,7 @@ export const PlayerCore = {
             playPromise
                 .then(() => {
                     this.audio.playbackRate = savedRate;
-                    // 仅注入元数据（封面标题），不设置 setPositionState，保证时间同步
+                    // 注入元数据并建立后台连接
                     this.updateMetadataOnly(title, artist, cover);
                 })
                 .catch(error => console.error("Playback Error:", error));
@@ -38,13 +38,21 @@ export const PlayerCore = {
             if (this._onTimeUpdate) {
                 this._onTimeUpdate((cur / dur) * 100 || 0, this.format(cur), this.format(dur));
             }
+            // 持续向系统更新播放位置，防止后台进程被杀
+            this.updatePositionState();
         };
 
         this.audio.onplay = () => {
             if (this._onStatusChange) this._onStatusChange(true);
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.playbackState = "playing";
+            }
         };
         this.audio.onpause = () => {
             if (this._onStatusChange) this._onStatusChange(false);
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.playbackState = "paused";
+            }
         };
 
         this.audio.oncanplay = () => {
@@ -67,6 +75,35 @@ export const PlayerCore = {
                     { src: cover, sizes: '512x512', type: 'image/png' },
                 ]
             });
+
+            // 注册动作句柄是让移动端浏览器维持后台运行的关键
+            const actionHandlers = [
+                ['play', () => this.audio.play()],
+                ['pause', () => this.audio.pause()],
+                ['seekbackward', (details) => { this.audio.currentTime -= (details.seekOffset || 15); }],
+                ['seekforward', (details) => { this.audio.currentTime += (details.seekOffset || 15); }],
+                ['seekto', (details) => { if (details.fastSeek && 'fastSeek' in this.audio) { this.audio.fastSeek(details.seekTime); } else { this.audio.currentTime = details.seekTime; } }]
+            ];
+
+            for (const [action, handler] of actionHandlers) {
+                try {
+                    navigator.mediaSession.setActionHandler(action, handler);
+                } catch (error) {
+                    console.log(`The media session action "${action}" is not supported.`);
+                }
+            }
+        }
+    },
+
+    updatePositionState() {
+        if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
+            if (this.audio.duration && Number.isFinite(this.audio.duration)) {
+                navigator.mediaSession.setPositionState({
+                    duration: this.audio.duration,
+                    playbackRate: this.audio.playbackRate,
+                    position: this.audio.currentTime
+                });
+            }
         }
     },
 
@@ -79,6 +116,7 @@ export const PlayerCore = {
     seek(pct) {
         if (this.audio.duration && Number.isFinite(this.audio.duration)) {
             this.audio.currentTime = (pct / 100) * this.audio.duration;
+            this.updatePositionState();
         }
     },
     format(s) {
