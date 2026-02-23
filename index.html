@@ -243,7 +243,6 @@
             handleClearData();
         };
 
-        // --- 提取重置播放器UI的公共方法 ---
         function resetPlayerUI() {
             PlayerCore.audio.pause();
             PlayerCore.audio.src = "";
@@ -543,15 +542,11 @@
                     <div class="delete-badge"><svg viewBox="0 0 24 24" width="14" height="14" stroke="white" stroke-width="3" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>`;
                 card.querySelector('.delete-badge').onclick = (e) => {
                     e.stopPropagation();
-                    
-                    // --- 优化：删除时检查是否正在播放该节目 ---
                     if (currentPlayingIdx.pod === i) {
                         resetPlayerUI();
                     } else if (currentPlayingIdx.pod > i) {
-                        // 如果删除的是当前播放节目之前的索引，需要修正索引位置保持同步
                         currentPlayingIdx.pod--;
                     }
-                    
                     allPodcastsData.splice(i, 1);
                     localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
                     renderPodcastList();
@@ -564,6 +559,13 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            // --- 优化：禁止右键菜单 ---
+            document.addEventListener('contextmenu', (e) => {
+                // 如果是输入框，允许右键
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+                e.preventDefault();
+            }, false);
+
             renderPodcastList();
             PlayerCore.onStatusChange((isPlaying) => window.updatePlayIcons(isPlaying));
             const savedTheme = localStorage.getItem('podcast_theme');
