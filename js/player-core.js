@@ -10,8 +10,9 @@ export const PlayerCore = {
     audio: sysAudio,
     _onTimeUpdate: null,
     _onStatusChange: null,
+    _onTimeSave: null, // 新增：用于保存进度的回调
 
-    play(url, title, artist, cover) {
+    play(url, title, artist, cover, startTime = 0) {
         if (!url) return;
 
         const savedRate = this.audio.playbackRate;
@@ -26,7 +27,10 @@ export const PlayerCore = {
             playPromise
                 .then(() => {
                     this.audio.playbackRate = savedRate;
-                    // 仅注入元数据（封面标题），不设置 setPositionState，保证时间同步
+                    // 如果有历史进度，跳转
+                    if (startTime > 0 && Math.abs(this.audio.currentTime - startTime) > 1) {
+                        this.audio.currentTime = startTime;
+                    }
                     this.updateMetadataOnly(title, artist, cover);
                 })
                 .catch(error => console.error("Playback Error:", error));
@@ -37,6 +41,10 @@ export const PlayerCore = {
             const dur = this.audio.duration;
             if (this._onTimeUpdate) {
                 this._onTimeUpdate((cur / dur) * 100 || 0, this.format(cur), this.format(dur));
+            }
+            // 每当播放时间更新，触发保存逻辑
+            if (this._onTimeSave) {
+                this._onTimeSave(cur, dur);
             }
         };
 
@@ -72,6 +80,7 @@ export const PlayerCore = {
 
     onStatusChange(cb) { this._onStatusChange = cb; },
     onTimeUpdate(cb) { this._onTimeUpdate = cb; },
+    onTimeSave(cb) { this._onTimeSave = cb; }, // 新增
     toggle() {
         if (this.audio.paused) { this.audio.play(); return true; } 
         else { this.audio.pause(); return false; }
