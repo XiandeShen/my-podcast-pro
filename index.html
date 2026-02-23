@@ -413,6 +413,11 @@
         window.toggleEpisodeDone = (podIdx, epIdx) => {
             const episode = allPodcastsData[podIdx].episodes[epIdx];
             episode.isFinished = !episode.isFinished;
+            // 如果标记为完成，则清空当前进度
+            if(episode.isFinished) {
+                episode.currentTime = 0;
+                episode.duration = 0;
+            }
             if(currentPlayingIdx.pod === podIdx && currentPlayingIdx.ep === epIdx) {
                 document.getElementById('markDoneBtn').classList.toggle('is-active', episode.isFinished);
             }
@@ -456,15 +461,27 @@
                     document.getElementById('playerAuthor').innerText = p.title;
                     document.getElementById('dynamicBg').style.backgroundImage = `url('${cover}')`;
                     document.getElementById('markDoneBtn').classList.toggle('is-active', !!ep.isFinished);
-                    PlayerCore.play(ep.audioUrl, ep.title, p.title, cover);
+                    // 传入历史进度
+                    PlayerCore.play(ep.audioUrl, ep.title, p.title, cover, ep.currentTime || 0);
                     window.renderEpisodeList(podIdx);
                 };
+
+                // 计算显示文案：已听完 > 正在播放 > 剩余时间 > 播放单集
+                let statusText = '播放单集';
+                if (ep.isFinished) {
+                    statusText = '已听完';
+                } else if (isCurrent) {
+                    statusText = '正在播放';
+                } else if (ep.currentTime > 5 && ep.duration > 0) {
+                    const remain = ep.duration - ep.currentTime;
+                    statusText = remain > 0 ? `剩余 ${PlayerCore.format(remain)}` : '已听完';
+                }
 
                 item.innerHTML = `
                     <img class="ep-list-cover" src="${ep.image || p.image}">
                     <div class="ep-list-info">
                         <div class="ep-list-title">${ep.title}</div>
-                        <div class="ep-list-meta">${ep.isFinished ? '已听完' : (isCurrent ? '正在播放' : '播放单集')}</div>
+                        <div class="ep-list-meta">${statusText}</div>
                     </div>
                 `;
                 listContainer.appendChild(item);
@@ -509,7 +526,9 @@
                             title: item.querySelector("title")?.textContent,
                             audioUrl: item.querySelector("enclosure")?.getAttribute("url"),
                             image: getImg(item) || podcastImage,
-                            isFinished: false 
+                            isFinished: false,
+                            currentTime: 0,
+                            duration: 0
                         }))
                     };
                     const existingIdx = allPodcastsData.findIndex(x => x.title === pod.title);
@@ -561,13 +580,33 @@
         document.addEventListener('DOMContentLoaded', () => {
             // --- 优化：禁止右键菜单 ---
             document.addEventListener('contextmenu', (e) => {
-                // 如果是输入框，允许右键
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
                 e.preventDefault();
             }, false);
 
             renderPodcastList();
             PlayerCore.onStatusChange((isPlaying) => window.updatePlayIcons(isPlaying));
+
+            // --- 新增：处理进度保存 ---
+            PlayerCore.onTimeSave((cur, dur) => {
+                const { pod, ep } = currentPlayingIdx;
+                if (pod !== -1 && ep !== -1) {
+                    const episode = allPodcastsData[pod].episodes[ep];
+                    // 只有当进度变化超过 1 秒或总长度变化时才保存，减少性能损耗
+                    if (Math.abs(episode.currentTime - cur) > 1 || episode.duration !== dur) {
+                        episode.currentTime = cur;
+                        episode.duration = dur;
+                        
+                        // 自动标记完成：如果听到最后 10 秒，自动视为完成
+                        if (dur > 0 && dur - cur < 10) {
+                            episode.isFinished = true;
+                        }
+                        
+                        localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
+                    }
+                }
+            });
+
             const savedTheme = localStorage.getItem('podcast_theme');
             if (savedTheme === 'dark') updateThemeUI(true);
             const fileInput = document.getElementById('rssFileInput');
