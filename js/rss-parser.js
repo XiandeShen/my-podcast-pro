@@ -6,16 +6,20 @@ export async function fetchAndParseRSS(url) {
         const dom = new DOMParser().parseFromString(xmlText, "text/xml");
         const channel = dom.querySelector("channel");
 
-        // 核心修复：针对李诞 RSS 特殊标签的稳健提取逻辑
+        if (!channel) return null;
+
+        // 处理命名空间，兼容更多平台的 XML 结构
         const getImg = (el) => {
             if (!el) return "";
-            // 方式 A: 获取 itunes:image 标签的 href 属性 (李诞 RSS 的标准方式)
-            const itunesImg = el.getElementsByTagName("itunes:image")[0];
-            if (itunesImg) {
-                const href = itunesImg.getAttribute("href");
-                if (href) return href;
-            }
-            // 方式 B: 获取标准 XML image 标签
+            // 1. iTunes 命名空间 (大部分播客使用的标准)
+            let itunesImg = el.getElementsByTagNameNS("http://www.itunes.com/dtds/podcast-1.0.dtd", "image")[0];
+            if (itunesImg) return itunesImg.getAttribute("href") || "";
+
+            // 2. 直接获取 itunes:image
+            const itImg = el.getElementsByTagName("itunes:image")[0];
+            if (itImg) return itImg.getAttribute("href") || "";
+
+            // 3. 标准 XML image 标签
             const standardImg = el.querySelector("image > url");
             if (standardImg) return standardImg.textContent;
             
@@ -25,16 +29,18 @@ export async function fetchAndParseRSS(url) {
         const podcastImage = getImg(channel);
 
         return {
-            title: channel.querySelector("title")?.textContent || "李诞",
-            author: channel.querySelector("itunes\\:author, author")?.textContent || "李诞",
+            title: channel.querySelector("title")?.textContent || "未知节目",
+            author: channel.querySelector("itunes\\:author, author")?.textContent || "未知作者",
             image: podcastImage,
             episodes: Array.from(dom.querySelectorAll("item")).map(item => {
                 const epImg = getImg(item);
                 return {
-                    title: item.querySelector("title")?.textContent,
+                    title: item.querySelector("title")?.textContent || "无标题",
                     audioUrl: item.querySelector("enclosure")?.getAttribute("url"),
-                    // 如果单集没有封面，就自动回退使用播客大封面
-                    image: epImg || podcastImage 
+                    image: epImg || podcastImage, // 单集无封面则回退到节目封面
+                    isFinished: false,
+                    currentTime: 0,
+                    duration: 0
                 };
             })
         };
