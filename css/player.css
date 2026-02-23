@@ -1,99 +1,193 @@
-// js/player-core.js
+/* 迷你悬浮条 */
+.mini-player {
+    position: fixed; 
+    bottom: 15px; 
+    left: 50%; 
+    transform: translateX(-50%);
+    width: 92%; 
+    max-width: 600px; 
+    height: 64px; 
+    background: var(--nav-bg); 
+    backdrop-filter: blur(25px) saturate(180%);
+    -webkit-backdrop-filter: blur(25px) saturate(180%);
+    border-radius: 16px; 
+    border: none; 
+    box-shadow: 
+        0 0 0 0.5px var(--border-light),
+        0 10px 30px rgba(0, 0, 0, 0.2),
+        inset 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+    z-index: 1000;
+    display: flex; flex-direction: column; overflow: hidden; cursor: pointer;
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.3s ease;
+}
 
-const sysAudio = new Audio();
-sysAudio.id = "core-audio-player";
-sysAudio.style.display = "none";
-sysAudio.preload = "auto";
-document.body.appendChild(sysAudio);
+.mini-player:active { transform: translateX(-50%) scale(0.97); }
 
-export const PlayerCore = {
-    audio: sysAudio,
-    _onTimeUpdate: null,
-    _onStatusChange: null,
-    _onTimeSave: null, // 新增：用于保存进度的回调
+.mini-player-content { flex: 1; display: flex; align-items: center; padding: 0 16px 0 0; gap: 12px; }
+.mini-info { flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; }
+#miniCover { width: 64px; height: 64px; border-radius: 0; object-fit: cover; flex-shrink: 0; margin: 0; }
+.mini-text { min-width: 0; display: flex; flex-direction: column; }
+#miniTitle { font-size: 14px; font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#miniAuthor { font-size: 11px; color: var(--accent); font-weight: 600; }
+.mini-controls { display: flex; align-items: center; gap: 18px; padding-right: 16px; }
+.mini-play-btn { background: none; border: none; cursor: pointer; color: var(--text-main); padding: 0; display: flex; transition: transform 0.2s ease; }
+.mini-play-btn:active { transform: scale(0.85); }
+.mini-speed-btn-text { background: none; border: none; color: var(--text-sub); font-size: 13px; font-weight: 700; cursor: pointer; width: 32px; transition: transform 0.2s ease; }
+.mini-speed-btn-text:active { transform: scale(0.85); }
 
-    play(url, title, artist, cover, startTime = 0) {
-        if (!url) return;
+/* 全屏播放页 Overlay */
+.p-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: #000; z-index: 2000; display: flex; flex-direction: column;
+    transform: translateY(100%); transition: transform 0.5s cubic-bezier(0.2, 1, 0.2, 1);
+    overflow: hidden;
+}
+.p-overlay.is-active { transform: translateY(0); }
 
-        const savedRate = this.audio.playbackRate;
-        
-        if (this.audio.src !== url) {
-            this.audio.src = url;
-            this.audio.load();
-        }
+.p-dynamic-bg {
+    position: absolute; top: -10%; left: -10%; width: 120%; height: 120%;
+    background-size: cover; background-position: center;
+    filter: blur(50px) brightness(0.8);
+    opacity: 0.7; z-index: -1;
+    transition: background-image 0.8s ease;
+}
 
-        const playPromise = this.audio.play();
-        if (playPromise !== undefined) {
-            playPromise
-                .then(() => {
-                    this.audio.playbackRate = savedRate;
-                    // 如果有历史进度，跳转
-                    if (startTime > 0 && Math.abs(this.audio.currentTime - startTime) > 1) {
-                        this.audio.currentTime = startTime;
-                    }
-                    this.updateMetadataOnly(title, artist, cover);
-                })
-                .catch(error => console.error("Playback Error:", error));
-        }
+.p-header-nav { 
+    padding: 10px; 
+    display: flex; 
+    justify-content: center; 
+    position: relative; 
+    z-index: 10; 
+    flex-shrink: 0; 
+}
+.p-close-btn { 
+    background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border: none; 
+    width: 36px; height: 36px; border-radius: 50%; color: #fff;
+    display: flex; align-items: center; justify-content: center; cursor: pointer; 
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+.p-close-btn:active { transform: scale(0.8); background: rgba(255,255,255,0.4); }
 
-        this.audio.ontimeupdate = () => {
-            const cur = this.audio.currentTime;
-            const dur = this.audio.duration;
-            if (this._onTimeUpdate) {
-                this._onTimeUpdate((cur / dur) * 100 || 0, this.format(cur), this.format(dur));
-            }
-            // 每当播放时间更新，触发保存逻辑
-            if (this._onTimeSave) {
-                this._onTimeSave(cur, dur);
-            }
-        };
+.p-main-content { 
+    flex: 0.94; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center; 
+    padding: 2vh 24px;
+    max-width: 600px;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+    position: relative; 
+    z-index: 2;
+    overflow: hidden;
+}
 
-        this.audio.onplay = () => {
-            if (this._onStatusChange) this._onStatusChange(true);
-        };
-        this.audio.onpause = () => {
-            if (this._onStatusChange) this._onStatusChange(false);
-        };
+.p-cover-wrap { 
+    flex: 2; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 100px;
+    padding: 10px 0;
+}
 
-        this.audio.oncanplay = () => {
-            this.audio.playbackRate = savedRate;
-        };
-    },
+#playerCover { 
+    max-height: 100%; 
+    max-width: 100%;
+    aspect-ratio: 1/1;
+    border-radius: 20px; 
+    object-fit: cover; 
+    box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+    transition: transform 0.4s cubic-bezier(0.2, 1, 0.2, 1);
+}
 
-    updateMetadataOnly(title, artist, cover) {
-        if ('mediaSession' in navigator) {
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: title || "未知剧集",
-                artist: artist || "Podcast",
-                album: artist || "Podcast",
-                artwork: [
-                    { src: cover, sizes: '96x96',   type: 'image/png' },
-                    { src: cover, sizes: '128x128', type: 'image/png' },
-                    { src: cover, sizes: '192x192', type: 'image/png' },
-                    { src: cover, sizes: '256x256', type: 'image/png' },
-                    { src: cover, sizes: '384x384', type: 'image/png' },
-                    { src: cover, sizes: '512x512', type: 'image/png' },
-                ]
-            });
-        }
-    },
+.p-overlay.is-active #playerCover { transform: scale(1); }
+.p-overlay:not(.is-active) #playerCover { transform: scale(0.8); }
 
-    onStatusChange(cb) { this._onStatusChange = cb; },
-    onTimeUpdate(cb) { this._onTimeUpdate = cb; },
-    onTimeSave(cb) { this._onTimeSave = cb; }, // 新增
-    toggle() {
-        if (this.audio.paused) { this.audio.play(); return true; } 
-        else { this.audio.pause(); return false; }
-    },
-    seek(pct) {
-        if (this.audio.duration && Number.isFinite(this.audio.duration)) {
-            this.audio.currentTime = (pct / 100) * this.audio.duration;
-        }
-    },
-    format(s) {
-        if (isNaN(s) || !Number.isFinite(s)) return "0:00";
-        const m = Math.floor(s / 60);
-        const sec = Math.floor(s % 60);
-        return `${m}:${sec < 10 ? '0' : ''}${sec}`;
-    }
-};
+.p-controls-area { 
+    flex: 0 0 auto; 
+    width: 100%; 
+    display: flex;
+    flex-direction: column;
+    gap: 1.5vh;
+    padding-bottom: 2vh;
+}
+
+.p-info-stack { text-align: center; }
+#playerTitle { 
+    font-size: clamp(16px, 2.5vh, 22px); 
+    color: #fff; font-weight: 700; margin: 0 0 4px 0;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+#playerAuthor { font-size: 13px; color: rgba(255,255,255,0.6); margin: 0; }
+
+.p-progress-wrap { width: 100%; }
+.p-slider { 
+    width: 100%; height: 4px; border-radius: 10px; accent-color: #fff; 
+    appearance: none; background: rgba(255,255,255,0.2); cursor: pointer;
+    transition: height 0.2s ease;
+}
+.p-slider:active { height: 6px; }
+
+.p-time-info { display: flex; justify-content: space-between; font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 8px; }
+
+.p-controls { display: flex; align-items: center; justify-content: center; gap: 40px; }
+.p-btn-play-large { 
+    width: clamp(56px, 8vh, 72px); height: clamp(56px, 8vh, 72px); 
+    border-radius: 50%; background: #fff; color: #000; border: none; 
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.2, 0, 0.2, 1);
+}
+.p-btn-play-large:active { transform: scale(0.88); }
+.p-btn-play-large svg { width: 45%; height: 45%; }
+
+.p-btn-sec { 
+    background: rgba(255,255,255,0.1); border: none; color: #fff; 
+    width: 44px; height: 44px; border-radius: 50%; 
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+.p-btn-sec:active { transform: scale(0.85); background: rgba(255,255,255,0.2); }
+
+.p-sub-actions {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+}
+
+.p-action-pill {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    padding: 8px 18px;
+    border-radius: 22px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    min-width: 70px;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+.p-action-pill:active { transform: scale(0.92); background: rgba(255, 255, 255, 0.2); }
+.p-action-pill.is-active { background: var(--accent); border-color: transparent; }
+
+.mini-player.is-empty .mini-controls { filter: grayscale(1); opacity: 0.5; pointer-events: none; }
+
+@keyframes miniShake {
+    0%, 100% { transform: translateX(-50%); }
+    25% { transform: translateX(-52%); }
+    50% { transform: translateX(-48%); }
+    75% { transform: translateX(-51%); }
+}
+.mini-shake { animation: miniShake 0.3s ease-in-out; }
+
+@media (max-height: 500px) {
+    .p-main-content { padding: 5px 20px; }
+    .p-cover-wrap { flex: 1; }
+    .p-controls-area { gap: 5px; }
+    .p-controls { gap: 20px; }
+}
