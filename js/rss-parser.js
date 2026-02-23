@@ -1,52 +1,55 @@
 // js/rss-parser.js
 export async function fetchAndParseRSS(url) {
     try {
-        // 核心修改：使用 allorigins 代理绕过 GitHub Pages 的跨域限制
+        // 使用 allorigins 代理服务绕过 GitHub Pages 的跨域限制 (CORS)
+        // 它会代替浏览器去抓取内容，然后以 JSON 格式返回给我们
         const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-        const response = await fetch(proxyUrl);
         
-        if (!response.ok) throw new Error("代理请求失败");
+        const response = await fetch(proxyUrl);
+        if (!response.ok) throw new Error("网络请求失败");
         
         const data = await response.json();
-        const xmlText = data.contents; // allorigins 返回的内容在 contents 字段中
+        // data.contents 里面才是真正的 XML 文本内容
+        const xmlText = data.contents;
         
         const dom = new DOMParser().parseFromString(xmlText, "text/xml");
         const channel = dom.querySelector("channel");
 
-        // 核心修复：针对李诞 RSS 特殊标签的稳健提取逻辑
+        if (!channel) {
+            throw new Error("解析失败：未能找到 RSS 频道信息");
+        }
+
+        // 提取图片的逻辑 (保持你原有的逻辑，兼容 itunes 标签)
         const getImg = (el) => {
             if (!el) return "";
-            // 方式 A: 获取 itunes:image 标签的 href 属性 (李诞 RSS 的标准方式)
             const itunesImg = el.getElementsByTagName("itunes:image")[0];
             if (itunesImg) {
                 const href = itunesImg.getAttribute("href");
                 if (href) return href;
             }
-            // 方式 B: 获取标准 XML image 标签
             const standardImg = el.querySelector("image > url");
             if (standardImg) return standardImg.textContent;
-            
             return "";
         };
 
         const podcastImage = getImg(channel);
 
         return {
-            title: channel.querySelector("title")?.textContent || "李诞",
-            author: channel.querySelector("itunes\\:author, author")?.textContent || "李诞",
+            title: channel.querySelector("title")?.textContent || "未知播客",
+            author: channel.querySelector("itunes\\:author, author")?.textContent || "未知作者",
             image: podcastImage,
             episodes: Array.from(dom.querySelectorAll("item")).map(item => {
                 const epImg = getImg(item);
                 return {
                     title: item.querySelector("title")?.textContent,
                     audioUrl: item.querySelector("enclosure")?.getAttribute("url"),
-                    // 如果单集没有封面，就自动回退使用播客大封面
                     image: epImg || podcastImage 
                 };
             })
         };
     } catch (error) {
         console.error("RSS 解析失败:", error);
+        alert("导入失败：可能是 RSS 链接无效或服务器响应慢。");
         return null;
     }
 }
