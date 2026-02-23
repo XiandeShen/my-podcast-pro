@@ -170,6 +170,7 @@
 
     <script type="module">
         import { PlayerCore } from './js/player-core.js';
+        import { fetchAndParseRSS } from './js/rss-parser.js';
         
         let allPodcastsData = [];
         try {
@@ -182,7 +183,7 @@
         let currentSpeedIndex = 0;
         let currentPlayingIdx = { pod: -1, ep: -1 };
 
-        const CustomUI = {
+const CustomUI = {
             overlay: document.getElementById('customDialogOverlay'),
             title: document.getElementById('dialogTitle'),
             msg: document.getElementById('dialogMsg'),
@@ -190,28 +191,69 @@
             confirmBtn: document.getElementById('dialogConfirm'),
             cancelBtn: document.getElementById('dialogCancel'),
             
-            show({ title, msg, showInput = false, confirmText = "确定", isDanger = false, placeholder = "" }) {
+            // 新增：弹出导入方式选择菜单
+            showImportTypeSelector() {
                 return new Promise((resolve) => {
-                    this.title.innerText = title;
-                    this.msg.innerText = msg;
-                    this.input.style.display = showInput ? 'block' : 'none';
-                    this.input.value = "";
-                    this.input.placeholder = placeholder;
-                    this.confirmBtn.innerText = confirmText;
-                    this.confirmBtn.className = `dialog-btn ${isDanger ? 'btn-danger' : 'btn-confirm'}`;
-                    this.overlay.style.display = 'flex';
+                    this.title.innerText = "添加订阅";
+                    this.msg.innerText = "选择您想要导入的方式";
+                    this.input.style.display = 'none';
+                    
+                    // 保存原始按钮，替换为双选项按钮
+                    const originalBtns = this.overlay.querySelector('.dialog-btns').innerHTML;
+                    this.overlay.querySelector('.dialog-btns').innerHTML = `
+                        <button class="dialog-btn btn-confirm" id="importLocalBtn" style="flex:1">本地导入</button>
+                        <button class="dialog-btn btn-confirm" id="importRemoteBtn" style="flex:1">链接导入</button>
+                    `;
 
                     const cleanup = (val) => {
                         this.overlay.style.display = 'none';
-                        this.confirmBtn.onclick = null;
-                        this.cancelBtn.onclick = null;
+                        this.overlay.querySelector('.dialog-btns').innerHTML = originalBtns;
+                        // 重新绑定原始按钮引用
+                        this.confirmBtn = document.getElementById('dialogConfirm');
+                        this.cancelBtn = document.getElementById('dialogCancel');
                         resolve(val);
                     };
 
-                    this.confirmBtn.onclick = () => cleanup(showInput ? this.input.value : true);
-                    this.cancelBtn.onclick = () => cleanup(false);
+                    document.getElementById('importLocalBtn').onclick = () => cleanup('local');
+                    document.getElementById('importRemoteBtn').onclick = () => cleanup('remote');
+                    this.overlay.onclick = (e) => { if(e.target === this.overlay) cleanup(null); };
+                    this.overlay.style.display = 'flex';
                 });
             },
+
+            show({ title, msg, showInput = false, confirmText = "确定", isDanger = false, placeholder = "" }) {
+            return new Promise((resolve) => {
+                this.title.innerText = title;
+                this.msg.innerText = msg;
+                this.input.style.display = showInput ? 'block' : 'none';
+                this.input.value = "";
+                this.input.placeholder = placeholder;
+                this.confirmBtn.innerText = confirmText;
+                
+                // 设置颜色：如果是危险操作变红，否则紫色
+                this.confirmBtn.className = `dialog-btn ${isDanger ? 'btn-danger' : 'btn-confirm'}`;
+                
+                // --- 关键修改：根据按钮文字控制取消按钮显示/隐藏 ---
+                if (confirmText === "好") {
+                    this.cancelBtn.style.display = 'none'; // 隐藏取消按钮
+                } else {
+                    this.cancelBtn.style.display = 'block'; // 显示取消按钮
+                }
+                // ---------------------------------------------
+
+                this.overlay.style.display = 'flex';
+
+                const cleanup = (val) => {
+                    this.overlay.style.display = 'none';
+                    this.confirmBtn.onclick = null;
+                    this.cancelBtn.onclick = null;
+                    resolve(val);
+                };
+
+                this.confirmBtn.onclick = () => cleanup(showInput ? this.input.value : true);
+                this.cancelBtn.onclick = () => cleanup(false);
+            });
+        },
             alert(msg) { return this.show({ title: "提示", msg }); }
         };
 
@@ -227,8 +269,46 @@
             moreMenu.classList.remove('show');
         });
 
-        document.getElementById('importAction').onclick = () => {
-            document.getElementById('rssFileInput').click();
+	document.getElementById('importAction').onclick = async () => {
+            moreMenu.classList.remove('show');
+            
+            // 弹出二级菜单
+            const choice = await CustomUI.showImportTypeSelector();
+            
+            if (choice === 'local') {
+                // 原有逻辑：点击本地文件选择
+                document.getElementById('rssFileInput').click();
+            } else if (choice === 'remote') {
+                // 新逻辑：输入链接
+                const url = await CustomUI.show({
+                    title: "链接订阅",
+                    msg: "请输入 RSS 或 XML 订阅地址：",
+                    showInput: true,
+                    placeholder: "https://example.com/feed.xml"
+                });
+
+                if (url && url.trim()) {
+                    // 使用已有的 rss-parser.js 功能
+                    try {
+                        const pod = await fetchAndParseRSS(url.trim());
+                        if (pod) {
+                            const existingIdx = allPodcastsData.findIndex(x => x.title === pod.title);
+                            if (existingIdx === -1) {
+                                allPodcastsData.unshift(pod);
+                                localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
+                                renderPodcastList();
+                                CustomUI.alert("订阅成功！");
+                            } else {
+                                CustomUI.alert("该播客已在资料库中。");
+                            }
+                        } else {
+                            CustomUI.alert("解析失败，请检查链接是否为有效的 RSS 地址。");
+                        }
+                    } catch (err) {
+                        CustomUI.alert("无法获取内容，请检查网络或链接。");
+                    }
+                }
+            }
         };
 
         document.getElementById('exportAction').onclick = () => {
@@ -268,9 +348,14 @@
             document.getElementById('durationTime').innerText = "0:00";
         }
 
-        async function handleClearData() {
+	async function handleClearData() {
             if (allPodcastsData.length === 0) {
-                CustomUI.alert("资料库已经是空的。");
+                // 修改点：只显示一个“好”按钮，不显示取消
+                await CustomUI.show({ 
+                    title: "提示", 
+                    msg: "资料库已经是空的。", 
+                    confirmText: "好" 
+                });
                 return;
             }
             const confirmed = await CustomUI.show({
@@ -327,9 +412,14 @@
             }
         }
 
-        function handleExport() {
+	function handleExport() {
             if (allPodcastsData.length === 0) {
-                CustomUI.alert("资料库为空，无需备份。");
+                // 修改点：只显示一个“好”按钮，不显示取消
+                CustomUI.show({ 
+                    title: "提示", 
+                    msg: "资料库为空，无需备份。", 
+                    confirmText: "好" 
+                });
                 return;
             }
             const blob = new Blob([JSON.stringify(allPodcastsData, null, 2)], { type: 'application/json' });
@@ -340,7 +430,6 @@
             a.click();
             URL.revokeObjectURL(url);
         }
-
         function updateThemeUI(isDark) {
             const icon = document.getElementById('themeIcon');
             const text = document.getElementById('themeText');
