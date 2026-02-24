@@ -9,6 +9,8 @@ def update_podcast():
     with open(json_path, 'r', encoding='utf-8') as f:
         podcasts = json.load(f)
 
+    print(f"开始全量同步，共有 {len(podcasts)} 个节目...")
+
     for pod in podcasts:
         rss_url = pod.get('feedUrl')
         if not rss_url: continue
@@ -17,35 +19,44 @@ def update_podcast():
             feed = feedparser.parse(rss_url)
             chan = feed.channel
             
-            # --- 自动补全标题和作者 ---
-            if not pod.get('title'):
-                pod['title'] = chan.get('title', "未知节目")
+            # 自动补全基础信息
+            pod['title'] = pod.get('title') or chan.get('title', "未知节目")
+            pod['author'] = chan.get('itunes_author') or chan.get('author') or "未知作者"
             
-            # 新增：抓取作者名 (优先抓取 itunes:author 或 dc:creator)
-            pod['author'] = chan.get('author', chan.get('itunes_author', "未知作者"))
-            
-            print(f"正在同步: {pod['title']} - {pod['author']}")
+            print(f"正在抓取全量剧集: {pod['title']}")
 
             # 封面图逻辑
             itunes_img = chan.get('itunes_image', {}).get('href', "")
             std_img = chan.get('image', {}).get('url', "")
             pod['image'] = itunes_img or std_img or pod.get('image', "")
 
-            # 处理剧集 (仅保留最新 15 集，防止 JSON 文件过大导致你看不见后面的节目)
+            # --- 核心修改：去掉 [:15]，抓取所有 entries ---
             new_episodes = []
-            for entry in feed.entries[:15]:
-                audio = entry.enclosures[0].href if 'enclosures' in entry and entry.enclosures else ""
+            for entry in feed.entries:
+                audio = ""
+                if 'enclosures' in entry and entry.enclosures:
+                    audio = entry.enclosures[0].href
+                
+                # 单集封面逻辑
+                ep_img = entry.get('itunes_image', {}).get('href', "") or \
+                         entry.get('image', {}).get('url', "") or \
+                         pod['image']
+
                 new_episodes.append({
                     "title": entry.title,
                     "audioUrl": audio,
-                    "image": entry.get('itunes_image', {}).get('href', "") or pod['image'],
+                    "image": ep_img,
                     "isFinished": False
                 })
+            
             pod['episodes'] = new_episodes
+            print(f"  ✅ 成功同步 {len(new_episodes)} 集")
 
         except Exception as e:
-            print(f"同步 {pod.get('title')} 失败: {e}")
+            print(f"  ❌ 同步 {pod.get('title', '未知')} 失败: {e}")
+            continue
 
+    # 保存结果
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(podcasts, f, ensure_ascii=False, indent=2)
 
