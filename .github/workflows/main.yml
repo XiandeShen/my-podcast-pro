@@ -1,98 +1,36 @@
-import feedparser
-import json
-import os
+name: Update Podcast RSS
 
-def update_podcast():
-    # 配置文件路径
-    json_path = 'default.json'
-    
-    # 检查文件是否存在
-    if not os.path.exists(json_path):
-        print(f"错误：找不到 {json_path}")
-        return
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
 
-    # 读取现有的资料库（建议先将备份内容粘贴进 default.json）
-    with open(json_path, 'r', encoding='utf-8') as f:
-        podcasts = json.load(f)
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    print(f"开始同步，共计 {len(podcasts)} 个播客项目...\n")
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
 
-    for pod in podcasts:
-        rss_url = pod.get('feedUrl')
-        pod_title = pod.get('title', '未命名播客')
-        
-        if not rss_url:
-            print(f"跳过：{pod_title} (无 RSS 链接)")
-            continue
-        
-        print(f"正在抓取: {pod_title}...")
-        
-        try:
-            # 1. 解析 RSS 源
-            # 核心修复：每次循环重新解析，确保 feed 变量完全独立
-            feed = feedparser.parse(rss_url)
-            
-            if not feed.entries:
-                print(f"  ⚠️  警告：{pod_title} 的 RSS 源似乎没有内容")
-                continue
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install feedparser
 
-            # 2. 更新播客元数据 (保留备份文件中的字段结构)
-            # 获取播客描述和主页链接
-            if not pod.get('description'):
-                pod['description'] = feed.channel.get('summary', feed.channel.get('description', ""))
-            
-            if not pod.get('link'):
-                pod['link'] = feed.channel.get('link', "")
+      - name: Run update script
+        run: python update_rss.py
 
-            # 3. 核心修复：获取该播客专属的官方封面图
-            # 逻辑：优先抓取频道封面，防止被上一个播客的封面污染
-            current_official_img = ""
-            if 'itunes_image' in feed.channel:
-                current_official_img = feed.channel.itunes_image.get('href', "")
-            elif 'image' in feed.channel:
-                current_official_img = feed.channel.image.get('url', "")
-            
-            # 如果抓到了官方封面，则覆盖原来的图片（解决“全是李诞封面”的问题）
-            if current_official_img:
-                pod['image'] = current_official_img
-
-            # 4. 处理剧集列表 (只取最新的 30 集，防止 JSON 文件过大)
-            new_episodes = []
-            for entry in feed.entries[:30]:
-                # 寻找音频附件地址
-                audio_link = ""
-                if 'enclosures' in entry and len(entry.enclosures) > 0:
-                    audio_link = entry.enclosures[0].href
-                
-                # 确定单集封面 (如果有单集特有的封面则用单集的，否则用频道大图)
-                ep_img = current_official_img
-                if 'itunes_image' in entry:
-                    ep_img = entry.itunes_image.get('href', current_official_img)
-
-                # 构造单集对象，保留 isFinished 状态字段
-                new_episodes.append({
-                    "title": entry.title,
-                    "audioUrl": audio_link,
-                    "image": ep_img,
-                    "isFinished": False
-                })
-            
-            # 只有在确实抓取到剧集时才进行覆盖更新
-            if new_episodes:
-                pod['episodes'] = new_episodes
-                print(f"  ✅ 更新成功：已抓取 {len(new_episodes)} 条剧集")
-
-        except Exception as e:
-            print(f"  ❌ 更新失败：{pod_title} 发生错误: {e}")
-
-    # 5. 将最终结果写回 default.json
-    with open(json_path, 'w', encoding='utf-8') as f:
-        # 使用 ensure_ascii=False 确保中文不乱码，indent=2 方便阅读
-        json.dump(podcasts, f, ensure_ascii=False, indent=2)
-    
-    print("\n" + "="*30)
-    print("所有播客同步任务已圆满完成！")
-    print("="*30)
-
-if __name__ == "__main__":
-    update_podcast()
+      - name: Commit and Push
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add default.json
+          git commit -m "Auto-update RSS content" || exit 0
+          git push
