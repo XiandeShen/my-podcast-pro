@@ -3,61 +3,73 @@ import json
 import os
 
 def update_podcast():
+    # 配置文件路径
     json_path = 'default.json'
-    # 默认占位图
-    DEFAULT_IMG = "https://image.xyzcdn.net/Fh-V0BTMMZUQCpInZzh4oOEMTSd3.jpg"
-
+    
+    # 检查文件是否存在
     if not os.path.exists(json_path):
         print(f"错误：找不到 {json_path}")
         return
 
+    # 读取现有的资料库（建议先将备份内容粘贴进 default.json）
     with open(json_path, 'r', encoding='utf-8') as f:
         podcasts = json.load(f)
 
+    print(f"开始同步，共计 {len(podcasts)} 个播客项目...\n")
+
     for pod in podcasts:
-        # --- 核心修复：每次循环开始前彻底重置变量 ---
         rss_url = pod.get('feedUrl')
-        pod_title = pod.get('title', 'Unknown')
+        pod_title = pod.get('title', '未命名播客')
         
         if not rss_url:
-            print(f"跳过无链接项目: {pod_title}")
+            print(f"跳过：{pod_title} (无 RSS 链接)")
             continue
         
-        print(f"正在同步: {pod_title}...")
+        print(f"正在抓取: {pod_title}...")
         
         try:
-            # 重新初始化解析器，防止残留
-            feed = None
+            # 1. 解析 RSS 源
+            # 核心修复：每次循环重新解析，确保 feed 变量完全独立
             feed = feedparser.parse(rss_url)
             
-            if not feed or 'entries' not in feed:
-                print(f"警告：无法解析 {pod_title} 的内容")
+            if not feed.entries:
+                print(f"  ⚠️  警告：{pod_title} 的 RSS 源似乎没有内容")
                 continue
 
-            # 1. 抓取该播客真正的官方封面
-            current_pod_img = DEFAULT_IMG
-            if 'image' in feed.channel:
-                current_pod_img = feed.channel.image.get('url', DEFAULT_IMG)
-            elif 'itunes_image' in feed.channel:
-                current_pod_img = feed.channel.itunes_image.get('href', DEFAULT_IMG)
+            # 2. 更新播客元数据 (保留备份文件中的字段结构)
+            # 获取播客描述和主页链接
+            if not pod.get('description'):
+                pod['description'] = feed.channel.get('summary', feed.channel.get('description', ""))
             
-            # 强制更新封面
-            pod['image'] = current_pod_img
+            if not pod.get('link'):
+                pod['link'] = feed.channel.get('link', "")
+
+            # 3. 核心修复：获取该播客专属的官方封面图
+            # 逻辑：优先抓取频道封面，防止被上一个播客的封面污染
+            current_official_img = ""
+            if 'itunes_image' in feed.channel:
+                current_official_img = feed.channel.itunes_image.get('href', "")
+            elif 'image' in feed.channel:
+                current_official_img = feed.channel.image.get('url', "")
             
-            # 2. 抓取剧集
+            # 如果抓到了官方封面，则覆盖原来的图片（解决“全是李诞封面”的问题）
+            if current_official_img:
+                pod['image'] = current_official_img
+
+            # 4. 处理剧集列表 (只取最新的 30 集，防止 JSON 文件过大)
             new_episodes = []
-            # 只取最新的 30 集，防止文件过大
             for entry in feed.entries[:30]:
-                # 寻找音频地址
+                # 寻找音频附件地址
                 audio_link = ""
                 if 'enclosures' in entry and len(entry.enclosures) > 0:
                     audio_link = entry.enclosures[0].href
                 
-                # 寻找单集图片 (如果没单集图就用播客大图)
-                ep_img = current_pod_img
+                # 确定单集封面 (如果有单集特有的封面则用单集的，否则用频道大图)
+                ep_img = current_official_img
                 if 'itunes_image' in entry:
-                    ep_img = entry.itunes_image.get('href', current_pod_img)
+                    ep_img = entry.itunes_image.get('href', current_official_img)
 
+                # 构造单集对象，保留 isFinished 状态字段
                 new_episodes.append({
                     "title": entry.title,
                     "audioUrl": audio_link,
@@ -65,18 +77,22 @@ def update_podcast():
                     "isFinished": False
                 })
             
-            # 3. 只有当抓取到的剧集确实属于该播客时才覆盖
-            # (通过检查 feed.channel.title 来二次确认)
-            pod['episodes'] = new_episodes
-            print(f"✅ {pod_title} 更新完成，共 {len(new_episodes)} 集")
+            # 只有在确实抓取到剧集时才进行覆盖更新
+            if new_episodes:
+                pod['episodes'] = new_episodes
+                print(f"  ✅ 更新成功：已抓取 {len(new_episodes)} 条剧集")
 
         except Exception as e:
-            print(f"❌ {pod_title} 更新失败: {e}")
+            print(f"  ❌ 更新失败：{pod_title} 发生错误: {e}")
 
-    # 将最终干净的数据写回文件
+    # 5. 将最终结果写回 default.json
     with open(json_path, 'w', encoding='utf-8') as f:
+        # 使用 ensure_ascii=False 确保中文不乱码，indent=2 方便阅读
         json.dump(podcasts, f, ensure_ascii=False, indent=2)
-    print("\n--- 所有任务执行完毕 ---")
+    
+    print("\n" + "="*30)
+    print("所有播客同步任务已圆满完成！")
+    print("="*30)
 
 if __name__ == "__main__":
     update_podcast()
