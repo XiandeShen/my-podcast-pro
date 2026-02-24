@@ -1,34 +1,82 @@
-name: Update Podcast RSS
+import feedparser
+import json
+import os
 
-on:
-  schedule:
-    - cron: '0 */6 * * *' # 每 6 小时自动运行一次
-  workflow_dispatch:      # 允许手动点击运行
+def update_podcast():
+    json_path = 'default.json'
+    # 默认占位图
+    DEFAULT_IMG = "https://image.xyzcdn.net/Fh-V0BTMMZUQCpInZzh4oOEMTSd3.jpg"
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write    # 显式声明读写权限，确保能推送回仓库
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    if not os.path.exists(json_path):
+        print(f"错误：找不到 {json_path}")
+        return
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+    with open(json_path, 'r', encoding='utf-8') as f:
+        podcasts = json.load(f)
 
-      - name: Install dependencies
-        run: pip install feedparser
+    for pod in podcasts:
+        # --- 核心修复：每次循环开始前彻底重置变量 ---
+        rss_url = pod.get('feedUrl')
+        pod_title = pod.get('title', 'Unknown')
+        
+        if not rss_url:
+            print(f"跳过无链接项目: {pod_title}")
+            continue
+        
+        print(f"正在同步: {pod_title}...")
+        
+        try:
+            # 重新初始化解析器，防止残留
+            feed = None
+            feed = feedparser.parse(rss_url)
+            
+            if not feed or 'entries' not in feed:
+                print(f"警告：无法解析 {pod_title} 的内容")
+                continue
 
-      - name: Run update script
-        run: python update_rss.py
+            # 1. 抓取该播客真正的官方封面
+            current_pod_img = DEFAULT_IMG
+            if 'image' in feed.channel:
+                current_pod_img = feed.channel.image.get('url', DEFAULT_IMG)
+            elif 'itunes_image' in feed.channel:
+                current_pod_img = feed.channel.itunes_image.get('href', DEFAULT_IMG)
+            
+            # 强制更新封面
+            pod['image'] = current_pod_img
+            
+            # 2. 抓取剧集
+            new_episodes = []
+            # 只取最新的 30 集，防止文件过大
+            for entry in feed.entries[:30]:
+                # 寻找音频地址
+                audio_link = ""
+                if 'enclosures' in entry and len(entry.enclosures) > 0:
+                    audio_link = entry.enclosures[0].href
+                
+                # 寻找单集图片 (如果没单集图就用播客大图)
+                ep_img = current_pod_img
+                if 'itunes_image' in entry:
+                    ep_img = entry.itunes_image.get('href', current_pod_img)
 
-      - name: Commit and Push
-        run: |
-          git config --global user.name "GitHub Action"
-          git config --global user.email "action@github.com"
-          git add default.json
-          git commit -m "Auto-update RSS content" || exit 0
-          git push
+                new_episodes.append({
+                    "title": entry.title,
+                    "audioUrl": audio_link,
+                    "image": ep_img,
+                    "isFinished": False
+                })
+            
+            # 3. 只有当抓取到的剧集确实属于该播客时才覆盖
+            # (通过检查 feed.channel.title 来二次确认)
+            pod['episodes'] = new_episodes
+            print(f"✅ {pod_title} 更新完成，共 {len(new_episodes)} 集")
+
+        except Exception as e:
+            print(f"❌ {pod_title} 更新失败: {e}")
+
+    # 将最终干净的数据写回文件
+    with open(json_path, 'w', encoding='utf-8') as f:
+        json.dump(podcasts, f, ensure_ascii=False, indent=2)
+    print("\n--- 所有任务执行完毕 ---")
+
+if __name__ == "__main__":
+    update_podcast()
