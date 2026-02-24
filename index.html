@@ -180,14 +180,13 @@
             allPodcastsData = [];
         }
 
-        // 2. 核心改进：静默同步云端数据
+                // 2. 核心改进：静默同步云端数据 (全状态保留版)
         fetch(`default.json?t=${Date.now()}`)
             .then(res => res.json())
             .then(cloudData => {
                 if (!allPodcastsData || allPodcastsData.length === 0) {
                     allPodcastsData = cloudData;
                 } else {
-                    // 增量合并逻辑：保留本地已听进度，加入云端新节目
                     allPodcastsData = cloudData.map(cloudPod => {
                         const localPod = allPodcastsData.find(p => p.feedUrl === cloudPod.feedUrl);
                         if (localPod) {
@@ -195,19 +194,20 @@
                                 const localEp = localPod.episodes.find(e => e.audioUrl === cloudEp.audioUrl);
                                 return {
                                     ...cloudEp,
-                                    // 重点：如果本地这集标记为已完成，同步后依然保持已完成状态
-                                    isFinished: localEp ? localEp.isFinished : cloudEp.isFinished
+                                    // 1. 保留是否听完的状态
+                                    isFinished: localEp ? localEp.isFinished : cloudEp.isFinished,
+                                    // 2. 核心修复：保留上次播放的时间点 (如果没有则设为 0)
+                                    lastTime: localEp ? (localEp.lastTime || 0) : 0
                                 };
                             });
                             return { ...cloudPod, episodes: mergedEpisodes };
                         }
-                        return cloudPod; // 如果是新增加的播客链接
+                        return cloudPod;
                     });
                 }
-                // 3. 自动存回本地并刷新 UI
                 localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
                 renderPodcasts();
-                console.log("云端同步成功，新节目已更新");
+                console.log("云端同步成功：已同步新剧集并保留了本地播放进度时间");
             })
             .catch(err => console.error("同步云端失败:", err));
 
