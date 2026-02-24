@@ -1,0 +1,32 @@
+name: Update Podcast RSS
+
+on:
+  schedule:
+    - cron: '0 */6 * * *' # 每 6 小时自动运行一次
+  workflow_dispatch:      # 允许你在 GitHub 界面手动点击运行
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install feedparser
+
+      - name: Run update script
+        run: python update_rss.py
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git add default.json
+          git commit -m "Auto-update RSS content" || exit 0
+          git push
