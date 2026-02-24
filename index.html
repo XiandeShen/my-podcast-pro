@@ -468,7 +468,7 @@ async function handleUrlRestore() {
             episode.isFinished = !episode.isFinished;
             // 如果标记为完成，则清空当前进度
             if(episode.isFinished) {
-                episode.currentTime = 0;
+                episode.lastTime = 0;
                 episode.duration = 0;
             }
             if(currentPlayingIdx.pod === podIdx && currentPlayingIdx.ep === epIdx) {
@@ -515,7 +515,7 @@ async function handleUrlRestore() {
                     document.getElementById('dynamicBg').style.backgroundImage = `url('${cover}')`;
                     document.getElementById('markDoneBtn').classList.toggle('is-active', !!ep.isFinished);
                     // 传入历史进度
-                    PlayerCore.play(ep.audioUrl, ep.title, p.title, cover, ep.currentTime || 0);
+                    PlayerCore.play(ep.audioUrl, ep.title, p.title, cover, ep.lastTime || 0);
                     window.renderEpisodeList(podIdx);
                 };
 
@@ -525,8 +525,8 @@ async function handleUrlRestore() {
                     statusText = '已听完';
                 } else if (isCurrent) {
                     statusText = '正在播放';
-                } else if (ep.currentTime > 5 && ep.duration > 0) {
-                    const remain = ep.duration - ep.currentTime;
+                } else if ((ep.lastTime || 0) > 5 && (ep.duration || 0) > 0) {
+                    const remain = ep.duration - ep.lastTime;
                     statusText = remain > 0 ? `剩余 ${PlayerCore.format(remain)}` : '已听完';
                 }
 
@@ -639,26 +639,6 @@ async function handleUrlRestore() {
 
             renderPodcastList();
             PlayerCore.onStatusChange((isPlaying) => window.updatePlayIcons(isPlaying));
-
-            // --- 新增：处理进度保存 ---
-            PlayerCore.onTimeSave((cur, dur) => {
-                const { pod, ep } = currentPlayingIdx;
-                if (pod !== -1 && ep !== -1) {
-                    const episode = allPodcastsData[pod].episodes[ep];
-                    // 只有当进度变化超过 1 秒或总长度变化时才保存，减少性能损耗
-                    if (Math.abs(episode.currentTime - cur) > 1 || episode.duration !== dur) {
-                        episode.currentTime = cur;
-                        episode.duration = dur;
-                        
-                        // 自动标记完成：如果听到最后 10 秒，自动视为完成
-                        if (dur > 0 && dur - cur < 10) {
-                            episode.isFinished = true;
-                        }
-                        
-                        localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
-                    }
-                }
-            });
 
             const savedTheme = localStorage.getItem('podcast_theme');
             if (savedTheme === 'dark') updateThemeUI(true);
