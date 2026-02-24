@@ -180,36 +180,41 @@
             allPodcastsData = [];
         }
 
-                // 2. 核心改进：静默同步云端数据
+        // 2. 核心改进：静默同步云端数据
         fetch(`default.json?t=${Date.now()}`)
             .then(res => res.json())
             .then(cloudData => {
                 if (!allPodcastsData || allPodcastsData.length === 0) {
                     allPodcastsData = cloudData;
                 } else {
+                    // 增量合并逻辑：保留本地已听进度，加入云端新节目
                     allPodcastsData = cloudData.map(cloudPod => {
-                        const localPod = allPodcastsData.find(p => p.feedUrl === cloudPod.feedUrl);
-                        if (localPod) {
-                            const mergedEpisodes = cloudPod.episodes.map(cloudEp => {
-                                const localEp = localPod.episodes.find(e => e.audioUrl === cloudEp.audioUrl);
-                                return {
-                                    ...cloudEp,
-                                    // 重点 1：保留已完成状态
-                                    isFinished: localEp ? localEp.isFinished : cloudEp.isFinished,
-                                    // 重点 2：保留播放进度时间戳，防止被云端 0 覆盖
-                                    lastTime: localEp ? (localEp.lastTime || 0) : 0
-                                };
-                            });
-                            return { ...cloudPod, episodes: mergedEpisodes };
-                        }
-                        return cloudPod;
-                    });
+    const localPod = allPodcastsData.find(p => p.feedUrl === cloudPod.feedUrl);
+    if (localPod) {
+        const mergedEpisodes = cloudPod.episodes.map(cloudEp => {
+            // 在本地数据库寻找对应的单集
+            const localEp = localPod.episodes.find(e => e.audioUrl === cloudEp.audioUrl);
+            return {
+                ...cloudEp,
+                // 保持本地的完成状态
+                isFinished: localEp ? localEp.isFinished : cloudEp.isFinished,
+                // 核心修复：如果本地有进度，则保留本地进度，否则设为 0
+                currentTime: localEp ? (localEp.currentTime || 0) : 0,
+                // 核心修复：同时保留单集的总时长
+                duration: localEp ? (localEp.duration || 0) : 0
+            };
+        });
+        return { ...cloudPod, episodes: mergedEpisodes };
+    }
+    return cloudPod; 
+});
                 }
+                // 3. 自动存回本地并刷新 UI
                 localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
                 renderPodcasts();
-                console.log("云端同步成功，进度已保留");
+                console.log("云端同步成功，新节目已更新");
             })
-            .catch(err => console.error("同步失败:", err));
+            .catch(err => console.error("同步云端失败:", err));
 
         const speeds = [1.0, 1.25, 1.5, 2.0];
         let currentSpeedIndex = 0;
@@ -468,7 +473,7 @@ async function handleUrlRestore() {
             episode.isFinished = !episode.isFinished;
             // 如果标记为完成，则清空当前进度
             if(episode.isFinished) {
-                episode.lastTime = 0;
+                episode.currentTime = 0;
                 episode.duration = 0;
             }
             if(currentPlayingIdx.pod === podIdx && currentPlayingIdx.ep === epIdx) {
@@ -515,7 +520,7 @@ async function handleUrlRestore() {
                     document.getElementById('dynamicBg').style.backgroundImage = `url('${cover}')`;
                     document.getElementById('markDoneBtn').classList.toggle('is-active', !!ep.isFinished);
                     // 传入历史进度
-                    PlayerCore.play(ep.audioUrl, ep.title, p.title, cover, ep.lastTime || 0);
+                    PlayerCore.play(ep.audioUrl, ep.title, p.title, cover, ep.currentTime || 0);
                     window.renderEpisodeList(podIdx);
                 };
 
@@ -525,8 +530,8 @@ async function handleUrlRestore() {
                     statusText = '已听完';
                 } else if (isCurrent) {
                     statusText = '正在播放';
-                } else if ((ep.lastTime || 0) > 5 && (ep.duration || 0) > 0) {
-                    const remain = ep.duration - ep.lastTime;
+                } else if (ep.currentTime > 5 && ep.duration > 0) {
+                    const remain = ep.duration - ep.currentTime;
                     statusText = remain > 0 ? `剩余 ${PlayerCore.format(remain)}` : '已听完';
                 }
 
@@ -640,24 +645,35 @@ async function handleUrlRestore() {
             renderPodcastList();
             PlayerCore.onStatusChange((isPlaying) => window.updatePlayIcons(isPlaying));
 
+            // --- 新增：处理进度保存 ---
+            PlayerCore.onTimeSave((cur, dur) => {
+                const { pod, ep } = currentPlayingIdx;
+                if (pod !== -1 && ep !== -1) {
+                    const episode = allPodcastsData[pod].episodes[ep];
+                    // 只有当进度变化超过 1 秒或总长度变化时才保存，减少性能损耗
+                    if (Math.abs(episode.currentTime - cur) > 1 || episode.duration !== dur) {
+                        episode.currentTime = cur;
+                        episode.duration = dur;
+                        
+                        // 自动标记完成：如果听到最后 10 秒，自动视为完成
+                        if (dur > 0 && dur - cur < 10) {
+                            episode.isFinished = true;
+                        }
+                        
+                        localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
+                    }
+                }
+            });
+
             const savedTheme = localStorage.getItem('podcast_theme');
             if (savedTheme === 'dark') updateThemeUI(true);
-
             const fileInput = document.getElementById('rssFileInput');
             if(fileInput) fileInput.onchange = handleFileUpload;
-
             const editBtn = document.getElementById('editBtn');
-            if(editBtn) editBtn.onclick = (e) => { 
-                e.stopPropagation(); 
-                document.body.classList.toggle('edit-mode'); 
-            };
-
+            if(editBtn) editBtn.onclick = (e) => { e.stopPropagation(); document.body.classList.toggle('edit-mode'); };
             const range = document.getElementById('progressRange');
             if(range) range.oninput = (e) => PlayerCore.seek(e.target.value);
-
-            // 核心修复：这个回调函数既负责更新播放条进度，也负责实时存盘
             PlayerCore.onTimeUpdate((pct, cur, tot) => {
-                // 1. 更新 UI 界面
                 const f = document.getElementById('miniProgressFill');
                 if(f) f.style.width = pct + '%';
                 const pr = document.getElementById('progressRange');
@@ -666,28 +682,8 @@ async function handleUrlRestore() {
                 if(ct) ct.innerText = cur;
                 const dt = document.getElementById('durationTime');
                 if(dt) dt.innerText = tot;
-
-                // 2. 实时保存进度到本地数据库
-                if (currentPlayingIdx.pod !== -1 && currentPlayingIdx.ep !== -1) {
-                    const episode = allPodcastsData[currentPlayingIdx.pod].episodes[currentPlayingIdx.ep];
-                    const rawTime = PlayerCore.audio.currentTime;
-                    const dur = PlayerCore.audio.duration;
-
-                    // 只有当播放时间大于 0 时才保存，防止误刷
-                    if (rawTime > 0) {
-                        episode.lastTime = rawTime;
-                        
-                        // 自动标记完成：如果听到最后 10 秒，自动设为已听完
-                        if (dur > 0 && (dur - rawTime < 10)) {
-                            episode.isFinished = true;
-                        }
-
-                        // 关键：立即写入浏览器存储，确保刷新网页也不丢进度
-                        localStorage.setItem('podcast_db', JSON.stringify(allPodcastsData));
-                    }
-                }
-            }); // 闭合 onTimeUpdate
-        }); // 闭合 DOMContentLoaded
+            });
+        });
     </script>
 </body>
 </html>
